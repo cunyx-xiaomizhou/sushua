@@ -1,0 +1,9 @@
+/.git/
+/.syntaxcheck/
+/.admin_chunk.txt
+/storage/cache/
+/storage/logs/
+/storage/uploads/
+/storage/*.php
+/storage/*.lock
+/storage/*.pending.php

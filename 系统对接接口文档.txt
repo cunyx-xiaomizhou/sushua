@@ -1,0 +1,1669 @@
+# 粥粥速刷网
+
+### 接口文档
+在本文档中你将了解到本系统中所有的公开接口，这些接口均支持使用`uid`和`api_key`进行调用。
+
+### 接口规范
+所有接口均遵循以下格式返回：
+```json
+{
+    "code": xxx,
+    "msg": "xxx",
+    "data": {...}/[...],
+    "time": xxx
+}
+```
+`code`为`200`是成功，其他均为失败，失败原因在`msg`中
+出现php报错信息属于意外现象，请及时上报反馈
+
+### 接口列表
+[[API]查询是否可以对接](/success)
+[[API]查询账户余额](/get_balance)
+[[API]查询商品列表](/query_goods)
+[[API]创建速刷订单](/create_order)
+[[API]发起订单补单](/retry_order)
+[[API]发起订单退款](/refund_order)
+[[API]速刷订单查询](/query_order)
+[[API]查询订单列表](/order_list)
+[[API]查询说说ID](/queryFeed)
+
+# 查询是否可以对接
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/success:
+    get:
+      summary: 查询是否可以对接
+      deprecated: false
+      description: 使用此接口可以查看你的货源商是否允许你对接售卖，以及对方的系统是否为标准系统。
+      tags: []
+      parameters:
+        - name: uid
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的用户ID
+          schema:
+            type: number
+        - name: api_key
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的接口密钥
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: 状态码
+                  msg:
+                    type: string
+                    title: 提示信息
+                  data:
+                    type: object
+                    properties:
+                      allow:
+                        type: boolean
+                        title: 对接状态
+                        default: true
+                    required:
+                      - allow
+                    x-apifox-orders:
+                      - allow
+                    title: 数据集
+                  time:
+                    type: integer
+                    title: 时间戳
+                required:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-orders:
+                  - code
+                  - msg
+                  - data
+                  - time
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 200
+                    msg: 接口调用成功
+                    data:
+                      allow: true
+                    time: 1784882166
+                '2':
+                  summary: 认证失败
+                  value:
+                    code: 400
+                    msg: uid 与 api_key 不对应，鉴权失败
+                    data: []
+                    time: 1784882456
+          headers: {}
+          x-apifox-name: 成功
+      security: []
+      x-apifox-folder: ''
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8628263/apis/api-492291487-run
+components:
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
+
+```
+
+# 查询账户余额
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/getBalance:
+    get:
+      summary: 查询账户余额
+      deprecated: false
+      description: 使用此接口可以查看你在货源商的账户可用余额，单位是万分之一元，即`amount`返回`10000`代表`可用余额1.00元`
+      tags: []
+      parameters:
+        - name: uid
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的用户ID
+          schema:
+            type: number
+        - name: api_key
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的接口密钥
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: 状态码
+                  msg:
+                    type: string
+                    title: 提示信息
+                  data:
+                    type: object
+                    properties:
+                      amount:
+                        type: number
+                        title: 账户余额
+                    required:
+                      - amount
+                    x-apifox-orders:
+                      - amount
+                    title: 数据集
+                  time:
+                    type: integer
+                    title: 时间戳
+                required:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-orders:
+                  - code
+                  - msg
+                  - data
+                  - time
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 200
+                    msg: 接口调用成功
+                    data:
+                      amount: 1065830
+                    time: 1784884881
+                '2':
+                  summary: 认证失败
+                  value:
+                    code: 400
+                    msg: uid 与 api_key 不对应，鉴权失败
+                    data: []
+                    time: 1784882456
+          headers: {}
+          x-apifox-name: 成功
+      security: []
+      x-apifox-folder: ''
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8628263/apis/api-492328039-run
+components:
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
+
+```
+
+# 查询商品列表
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/queryGoods:
+    get:
+      summary: 查询商品列表
+      deprecated: false
+      description: >-
+        使用此接口可以查看货源商支持售卖和对接的商品，在此接口中，`data`对象的每个键没有用处，只是作为上游的标识，实际编写代码时可以忽略掉键。为了简化文档，此返回示例中只有`mpz`一个商品的字段说明，且部分关于“慢刷”的字段并非一定存在，比如`min_delayed`(慢刷最低下单限制)，当商品支持慢刷时，且不存在`min_delayed`字段，则没有特殊要求(可以看做与`min`一致)。`delayed_price`是慢刷价格
+      tags: []
+      parameters:
+        - name: uid
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的用户ID
+          schema:
+            type: number
+        - name: api_key
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的接口密钥
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: 状态码
+                  msg:
+                    type: string
+                    title: 提示信息
+                  data:
+                    type: object
+                    properties:
+                      mpz:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            title: 商品名称
+                          min:
+                            type: integer
+                            title: 最低下单限制
+                          max:
+                            type: integer
+                            title: 最大下单限制
+                          step:
+                            type: integer
+                            title: 计价标准数量
+                          steps:
+                            type: array
+                            items:
+                              type: integer
+                            title: 选择步长
+                          sign:
+                            type: string
+                            title: 商品标识
+                          input:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                type:
+                                  type: string
+                                title:
+                                  type: string
+                                placeholder:
+                                  type: string
+                              required:
+                                - name
+                                - type
+                                - title
+                                - placeholder
+                              x-apifox-orders:
+                                - name
+                                - type
+                                - title
+                                - placeholder
+                            title: 需求输入框
+                          desc:
+                            type: array
+                            items:
+                              type: string
+                            title: 商品注意事项
+                          min_delayed:
+                            type: integer
+                            title: 慢刷最低下单限制
+                          price:
+                            type: integer
+                            title: 下单价格
+                          level:
+                            type: string
+                            title: 等级/用户组
+                          price_delayed:
+                            type: integer
+                            title: 慢刷下单价格
+                        required:
+                          - name
+                          - min
+                          - max
+                          - step
+                          - steps
+                          - sign
+                          - input
+                          - desc
+                          - min_delayed
+                          - price
+                          - level
+                          - price_delayed
+                        x-apifox-orders:
+                          - name
+                          - min
+                          - max
+                          - step
+                          - steps
+                          - sign
+                          - input
+                          - desc
+                          - min_delayed
+                          - price
+                          - level
+                          - price_delayed
+                        title: 商品
+                    required:
+                      - mpz
+                    x-apifox-orders:
+                      - mpz
+                    title: 数据集
+                  time:
+                    type: integer
+                    title: 时间戳
+                required:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-orders:
+                  - code
+                  - msg
+                  - data
+                  - time
+              example:
+                code: 200
+                msg: 接口调用成功
+                data:
+                  mpz:
+                    name: 名片赞
+                    min: 100
+                    max: 1000000
+                    step: 100
+                    steps:
+                      - 100
+                      - 1000
+                      - 10000
+                      - 100000
+                    sign: gid:1
+                    input:
+                      - name: qq
+                        type: qq
+                        title: 请输入下单QQ号
+                        placeholder: 请输入下单QQ号
+                      - name: num
+                        type: setNum
+                        title: 请设置下单数量
+                        placeholder: ''
+                    desc:
+                      - 请开启“允许陌生人点赞”，因设置不当导致的未到账不退单不补单
+                      - 本商品下单范围100~100w，下单数量必须为100的整数倍
+                    min_delayed: 2000
+                    price: 1000
+                    level: 站长亲爹
+                    price_delayed: 600
+                  randomMpz:
+                    name: '[随机数量]名片赞'
+                    min: 1
+                    max: 1000
+                    step: 1
+                    steps:
+                      - 1
+                      - 10
+                      - 100
+                      - 500
+                    sign: gid:6
+                    input:
+                      - name: qq
+                        type: qq
+                        title: 请输入下单QQ号
+                        placeholder: 请输入下单QQ号
+                      - name: num
+                        type: setNum
+                        title: 请设置下单数量（份数）
+                        placeholder: ''
+                    desc:
+                      - 请开启“允许陌生人点赞”，因设置不当导致的未到账不退单不补单
+                      - >-
+                        随机到账500~2500赞，买多份可叠加，例如单次购买5份就是2500~12500赞（纯看脸，不支持因数量少而发起售后）
+                      - 最高日到账30万
+                    price: 20000
+                    level: 基础等级
+                  zoneVistor:
+                    name: 空间访客
+                    min: 100
+                    max: 1000000
+                    step: 100
+                    steps:
+                      - 100
+                      - 1000
+                      - 10000
+                      - 100000
+                    sign: gid:2
+                    input:
+                      - name: qq
+                        type: qq
+                        title: 请输入下单QQ号
+                        placeholder: 请输入下单QQ号
+                      - name: num
+                        type: setNum
+                        title: 请设置下单数量
+                        placeholder: ''
+                    desc:
+                      - 请在空间设置中开启“允许所有人访问”，因设置不当导致的未到账不退单不补单
+                      - 本商品下单范围100~100w，下单数量必须为100的整数倍，否则下单失败
+                    price: 3221
+                    level: 高级合作商
+                  feedZan:
+                    name: 空间说说赞
+                    min: 10
+                    max: 10000
+                    step: 10
+                    steps:
+                      - 10
+                      - 100
+                      - 1000
+                    sign: gid:3
+                    input:
+                      - name: qq
+                        type: qq
+                        title: 请输入下单QQ号
+                        placeholder: 请输入下单QQ号
+                      - name: num
+                        type: setNum
+                        title: 请设置下单数量
+                        placeholder: ''
+                      - name: feed_id
+                        type: feed
+                        title: 指定说说ID
+                        placeholder: 输入下单说说ID
+                    desc:
+                      - 请在权限设置中将目标说说查看权限设为公开，否则不退单不补单
+                      - 本商品下单范围10~1w，下单数量必须是10的倍数
+                      - 由于部分原因限制，本单非秒到类产品，实际速度平均约为22.8秒/个，无法接受请不要下单，下单不退
+                    price: 11875
+                    level: 顶级代理
+                  feedViews:
+                    name: 说说浏览量
+                    min: 100
+                    max: 1000000
+                    step: 100
+                    steps:
+                      - 100
+                      - 1000
+                      - 10000
+                      - 100000
+                    sign: gid:4
+                    input:
+                      - name: qq
+                        type: qq
+                        title: 请输入下单QQ号
+                        placeholder: 请输入下单QQ号
+                      - name: num
+                        type: setNum
+                        title: 请设置下单数量
+                        placeholder: ''
+                      - name: feed_id
+                        type: feed
+                        title: 指定说说ID
+                        placeholder: 输入下单说说ID
+                    desc:
+                      - 请在权限设置中将目标说说查看权限设为公开，否则不退单不补单
+                      - 本商品下单范围100~100w，下单数量必须是100的整数倍
+                      - >-
+                        浏览量/热度
+                        需要在QQ空间的[设置]->[更多设置]->[隐私设置]中打开允许别人查看浏览量，否则只有自己才能看到
+                    price: 5000
+                    level: 基础等级
+                  tagZan:
+                    name: 个性标签赞(拉圈圈)
+                    min: 1
+                    max: 1
+                    step: 1
+                    steps:
+                      - 1
+                    sign: gid:7
+                    input:
+                      - name: qq
+                        type: qq
+                        title: 请输入下单QQ号
+                        placeholder: 请输入下单QQ号
+                      - name: num
+                        type: setNum
+                        title: 请设置下单数量
+                        placeholder: ''
+                    desc:
+                      - 请先确认已将QQ的『个性名片』装扮改为可查看圈圈赞的模式，然后开始编辑『个性标签』
+                      - 将需要被拉满99+的标签提前设置好(最高可设置7个)，下单后再修改的标签不会被执行
+                      - 本商品不支持任何条件的退单，若出现很长时间未到账，可进入官方群或联系销售渠道售后
+                      - 执行效率：下单秒刷秒到
+                    price: 40000
+                    level: 基础等级
+                time: 1784886165
+          headers: {}
+          x-apifox-name: 成功
+      security: []
+      x-apifox-folder: ''
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8628263/apis/api-492348746-run
+components:
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
+
+```
+
+# 创建速刷订单
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/createOrder:
+    get:
+      summary: 创建速刷订单
+      deprecated: false
+      description: >-
+        此接口为下单接口，只要发起接口请求就会真的下单。`sign`在[查询商品列表](/query_goods)中会返回。对于##说说浏览量##和##说说赞##商品需要传入feed_id，否则下单失败。`limt`为价格保护参数，如果本单理应消耗1500余额，此字段传值1000，因为`1500>1000`，所以本单将返回失败信息。
+      tags: []
+      parameters:
+        - name: uid
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的用户ID
+          schema:
+            type: integer
+        - name: api_key
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的接口密钥
+          schema:
+            type: string
+        - name: sign
+          in: query
+          description: 商品标识
+          required: true
+          example: gid:x
+          schema:
+            type: string
+        - name: qq
+          in: query
+          description: 目标QQ号
+          required: true
+          example: 2996849867
+          schema:
+            type: integer
+        - name: num
+          in: query
+          description: 下单数量
+          required: true
+          example: 100
+          schema:
+            type: integer
+        - name: feed_id
+          in: query
+          description: 目标说说ID
+          required: false
+          example: abcdef123456789
+          schema:
+            type: string
+        - name: is_delayed
+          in: query
+          description: 是否慢刷
+          required: false
+          example: 0
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: 溢价限制
+          required: false
+          example: 1200
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: 状态码
+                  msg:
+                    type: string
+                    title: 提示信息
+                  data:
+                    type: object
+                    properties:
+                      orderid:
+                        type: string
+                        title: 订单号
+                      price:
+                        type: integer
+                        title: 消耗余额
+                      num:
+                        type: integer
+                        title: 下单数量
+                      sign:
+                        type: string
+                        title: 商品标识
+                      feed_id:
+                        type: 'null'
+                        title: 说说ID
+                    required:
+                      - orderid
+                      - price
+                      - num
+                      - sign
+                      - feed_id
+                    x-apifox-orders:
+                      - orderid
+                      - price
+                      - num
+                      - sign
+                      - feed_id
+                    title: 数据集
+                  time:
+                    type: integer
+                    title: 时间戳
+                required:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-orders:
+                  - code
+                  - msg
+                  - data
+                  - time
+              examples:
+                '1':
+                  summary: 认证失败
+                  value:
+                    code: 400
+                    msg: uid 与 api_key 不对应，鉴权失败
+                    data: []
+                    time: 1784882456
+                '2':
+                  summary: 成功示例
+                  value:
+                    code: 200
+                    msg: 接口调用成功
+                    data:
+                      orderid: XMZ20260724184934266e2a077a55bb
+                      price: 1000
+                      num: 100
+                      sign: gid:1
+                      feed_id: null
+                    time: 1784890174
+                '3':
+                  summary: 溢价拦截
+                  value:
+                    code: 500
+                    msg: 下单失败：实际消费1000超过限价1，已阻拦下单
+                    data: []
+                    time: 1784890539
+          headers: {}
+          x-apifox-name: 成功
+      security: []
+      x-apifox-folder: ''
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8628263/apis/api-492385348-run
+components:
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
+
+```
+
+# 发起订单补单
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/retryOrder:
+    get:
+      summary: 发起订单补单
+      deprecated: false
+      description: 因忘记开权限或者其他原因导致失败的，可申请补单一次，补单后还失败的将不再支持退款以及再次补单。
+      tags: []
+      parameters:
+        - name: bid
+          in: query
+          description: 上游网站订单号
+          required: true
+          example: XMZ20260726095545bfbd15c3508ef6
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: 状态码
+                  msg:
+                    type: string
+                    title: 提示信息
+                  data:
+                    type: object
+                    properties:
+                      bid:
+                        type: string
+                        title: 订单号
+                    required:
+                      - bid
+                    x-apifox-orders:
+                      - bid
+                    title: 数据集
+                  time:
+                    type: integer
+                    title: 时间戳
+                required:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-orders:
+                  - code
+                  - msg
+                  - data
+                  - time
+              examples:
+                '1':
+                  summary: 申请成功示例
+                  value:
+                    code: 200
+                    msg: 补单申请成功
+                    data:
+                      bid: XMZ20260726095545bfbd15c3508ef6
+                    time: 1785032500
+                '2':
+                  summary: 重复发起补单
+                  value:
+                    code: 400
+                    msg: 该订单状态不支持补单
+                    data: []
+                    time: 1785033116
+          headers: {}
+          x-apifox-name: 成功
+      security: []
+      x-apifox-folder: ''
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8628263/apis/api-492599563-run
+components:
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
+
+```
+
+# 发起订单退款
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/refundOrder:
+    get:
+      summary: 发起订单退款
+      deprecated: false
+      description: |-
+        因服务器异常导致的失败和刷取任务还未开始的订单才可退，正常开刷的不支持退款。
+        忘开权限等导致的失败不属于服务器异常，仅可申请补单，无法退款。
+      tags: []
+      parameters:
+        - name: bid
+          in: query
+          description: 上游网站订单号
+          required: true
+          example: XMZ20260726095545bfbd15c3508ef6
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    title: 状态码
+                  msg:
+                    type: string
+                    title: 同时信息
+                  data:
+                    type: object
+                    properties:
+                      uid:
+                        type: string
+                        title: 退款到哪个用户(你自己)
+                      bid:
+                        type: string
+                        title: 退款订单
+                    x-apifox-orders:
+                      - uid
+                      - bid
+                    title: 返回数据
+                    required:
+                      - uid
+                      - bid
+                  time:
+                    type: number
+                    title: 请求时间戳
+                required:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-orders:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-refs: {}
+              examples:
+                '1':
+                  summary: 退款成功示例
+                  value:
+                    code: 200
+                    msg: 退款成功，余额已返还
+                    data:
+                      uid: 1
+                      bid: XMZ20260726112054203958f006517a
+                    time: 1785037537
+                '2':
+                  summary: 退款失败示例
+                  value:
+                    code: 403
+                    msg: 你都退过款了，怎么还想退一次
+                    data: []
+                    time: 1785037662
+          headers: {}
+          x-apifox-name: 成功
+      security: []
+      x-apifox-folder: ''
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8628263/apis/api-492703846-run
+components:
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
+
+```
+
+# 查看订单详细信息
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/queryOrder:
+    get:
+      summary: 查看订单详细信息
+      deprecated: false
+      description: 此接口传入订单号即可查看某一订单详细信息，包括是否成功执行和目前执行进度。当出现有问题无法执行时，`message`会显示无法执行的原因
+      tags: []
+      parameters:
+        - name: bid
+          in: query
+          description: ''
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: 状态码
+                  msg:
+                    type: string
+                    title: 提示信息
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        title: 没用的id
+                      bid:
+                        type: string
+                        title: 用来查单的id
+                      uid:
+                        type: integer
+                        title: 下单所属uid
+                      sign:
+                        type: string
+                        title: 商品标识
+                      feed_id:
+                        type: string
+                        title: 说说id
+                      target:
+                        type: integer
+                        title: 目标QQ号
+                      num:
+                        type: integer
+                        title: 下单数量
+                      state:
+                        type: string
+                        title: 状态
+                      message:
+                        type: string
+                        title: 订单备注/信息
+                      snum:
+                        type: integer
+                        title: 起始数量
+                      nnum:
+                        type: integer
+                        title: 当前数量
+                      enum:
+                        type: integer
+                        title: 结束数量
+                      ctime:
+                        type: integer
+                        title: 订单创建时间
+                      stime:
+                        type: integer
+                        title: 订单处理时间
+                      utime:
+                        type: integer
+                        title: 最后更新时间
+                      etime:
+                        type: integer
+                        title: 处理结束时间
+                      method:
+                        type: string
+                        title: 下单方式
+                      good_name:
+                        type: string
+                        title: 商品名称
+                    required:
+                      - id
+                      - bid
+                      - uid
+                      - sign
+                      - feed_id
+                      - target
+                      - num
+                      - state
+                      - message
+                      - snum
+                      - nnum
+                      - enum
+                      - ctime
+                      - stime
+                      - utime
+                      - etime
+                      - method
+                      - good_name
+                    x-apifox-orders:
+                      - id
+                      - bid
+                      - uid
+                      - sign
+                      - feed_id
+                      - target
+                      - num
+                      - state
+                      - message
+                      - snum
+                      - nnum
+                      - enum
+                      - ctime
+                      - stime
+                      - utime
+                      - etime
+                      - method
+                      - good_name
+                    title: 数据集
+                  time:
+                    type: integer
+                    title: 时间戳
+                required:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-orders:
+                  - code
+                  - msg
+                  - data
+                  - time
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 200
+                    msg: 接口调用成功
+                    data:
+                      id: 2272
+                      bid: XMZ20260724184934266e2a077a55bb
+                      uid: 1
+                      sign: gid:1
+                      feed_id: ''
+                      target: 2393849840
+                      num: 100
+                      state: 已完成
+                      message: ''
+                      snum: 10537
+                      nnum: 10637
+                      enum: 10637
+                      ctime: 1784890174
+                      stime: 1784890175
+                      utime: 1784890191
+                      etime: 1784890191
+                      method: Console
+                      good_name: 名片赞
+                    time: 1784890251
+                '2':
+                  summary: 订单异常示例
+                  value:
+                    code: 200
+                    msg: 接口调用成功
+                    data:
+                      id: 2270
+                      bid: XMZ20260724182900686ded716cd750
+                      uid: 1
+                      sign: gid:1
+                      feed_id: ''
+                      target: 2996849867
+                      num: 100
+                      state: 失败
+                      message: 资料卡异常
+                      snum: ''
+                      nnum: ''
+                      enum: ''
+                      ctime: 1784888940
+                      stime: ''
+                      utime: 1784888941
+                      etime: ''
+                      method: Console
+                      good_name: 名片赞
+                    time: 1784892246
+                '3':
+                  summary: 订单不存在
+                  value:
+                    code: 500
+                    msg: 不存在此订单交易号或此订单交易号非速刷订单交易号
+                    data: []
+                    time: 1784892735
+          headers: {}
+          x-apifox-name: 成功
+      security: []
+      x-apifox-folder: ''
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8628263/apis/api-492385357-run
+components:
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
+
+```
+
+# 查询订单列表
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/orderList:
+    get:
+      summary: 查询订单列表
+      deprecated: false
+      description: 分页查看订单信息
+      tags: []
+      parameters:
+        - name: uid
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的用户ID
+          schema:
+            type: number
+        - name: api_key
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的接口密钥
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: 第几页
+          required: false
+          example: 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: 一页多少条
+          required: false
+          example: 20
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: 状态码
+                  msg:
+                    type: string
+                    title: 提示信息
+                  data:
+                    type: object
+                    properties:
+                      orders:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            bid:
+                              type: string
+                            uid:
+                              type: integer
+                            sign:
+                              type: string
+                            feed_id:
+                              type: string
+                            target:
+                              type: integer
+                            num:
+                              type: integer
+                            state:
+                              type: string
+                            message:
+                              type: string
+                            snum:
+                              type: integer
+                            nnum:
+                              type: integer
+                            enum:
+                              type: integer
+                            ctime:
+                              type: integer
+                            stime:
+                              type: integer
+                            utime:
+                              type: integer
+                            etime:
+                              type: integer
+                            method:
+                              type: string
+                            good_name:
+                              type: string
+                          required:
+                            - id
+                            - bid
+                            - uid
+                            - sign
+                            - feed_id
+                            - target
+                            - num
+                            - state
+                            - message
+                            - snum
+                            - nnum
+                            - enum
+                            - ctime
+                            - stime
+                            - utime
+                            - etime
+                            - method
+                            - good_name
+                          x-apifox-orders:
+                            - id
+                            - bid
+                            - uid
+                            - sign
+                            - feed_id
+                            - target
+                            - num
+                            - state
+                            - message
+                            - snum
+                            - nnum
+                            - enum
+                            - ctime
+                            - stime
+                            - utime
+                            - etime
+                            - method
+                            - good_name
+                        title: 订单信息
+                        description: 这里不做说明，请看查看订单详细信息接口的说明
+                      pagination:
+                        type: object
+                        properties:
+                          page:
+                            type: integer
+                            title: 当前页
+                          limit:
+                            type: integer
+                            title: 一页条数
+                          total:
+                            type: integer
+                            title: 总共条数
+                          pages:
+                            type: integer
+                            title: 总页数
+                        required:
+                          - page
+                          - limit
+                          - total
+                          - pages
+                        x-apifox-orders:
+                          - page
+                          - limit
+                          - total
+                          - pages
+                        title: 分页信息
+                    required:
+                      - orders
+                      - pagination
+                    x-apifox-orders:
+                      - orders
+                      - pagination
+                    title: 数据集
+                  time:
+                    type: integer
+                    title: 时间戳
+                required:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-orders:
+                  - code
+                  - msg
+                  - data
+                  - time
+              examples:
+                '1':
+                  summary: 认证失败
+                  value:
+                    code: 400
+                    msg: uid 与 api_key 不对应，鉴权失败
+                    data: []
+                    time: 1784882456
+                '2':
+                  summary: 成功示例
+                  value:
+                    code: 200
+                    msg: 获取订单列表成功
+                    data:
+                      orders:
+                        - id: 2272
+                          bid: XMZ20260724184934266e2a077a55bb
+                          uid: 1
+                          sign: gid:1
+                          feed_id: ''
+                          target: 2393849840
+                          num: 100
+                          state: 已完成
+                          message: ''
+                          snum: 10537
+                          nnum: 10637
+                          enum: 10637
+                          ctime: 1784890174
+                          stime: 1784890175
+                          utime: 1784890191
+                          etime: 1784890191
+                          method: Console
+                          good_name: 名片赞
+                        - id: 2270
+                          bid: XMZ20260724182900686ded716cd750
+                          uid: 1
+                          sign: gid:1
+                          feed_id: ''
+                          target: 2996849867
+                          num: 100
+                          state: 失败
+                          message: 资料卡异常
+                          snum: ''
+                          nnum: ''
+                          enum: ''
+                          ctime: 1784888940
+                          stime: ''
+                          utime: 1784888941
+                          etime: ''
+                          method: Console
+                          good_name: 名片赞
+                      pagination:
+                        page: 1
+                        limit: 20
+                        total: 2
+                        pages: 1
+                    time: 1784894934
+          headers: {}
+          x-apifox-name: 成功
+      security: []
+      x-apifox-folder: ''
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8628263/apis/api-492411291-run
+components:
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
+
+```
+
+# 查询说说ID
+
+## OpenAPI Specification
+
+```yaml
+openapi: 3.0.1
+info:
+  title: ''
+  description: ''
+  version: 1.0.0
+paths:
+  /api/queryFeed:
+    get:
+      summary: 查询说说ID
+      deprecated: false
+      description: >-
+        仅支持查询空间说说的第一页，如果说说过于靠后无法在第一页获取到，可将需要说说先进行置顶后再查询。若有翻页需求，可使用[`小米粥科技API`](https://api.yzxmz.cn/)进行查询
+      tags: []
+      parameters:
+        - name: uid
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的用户ID
+          schema:
+            type: number
+        - name: api_key
+          in: query
+          description: 从上游系统获取
+          required: true
+          example: 你的接口密钥
+          schema:
+            type: string
+        - name: uin
+          in: query
+          description: 被查询QQ号
+          required: true
+          example: 2393849840
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    title: 状态码
+                  msg:
+                    type: string
+                    title: 提示信息
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nickname:
+                          type: string
+                          title: 昵称
+                        ctime:
+                          type: integer
+                          title: 发布时间
+                        feed_id:
+                          type: string
+                          title: 说说ID
+                        content:
+                          type: string
+                          title: 内容
+                        img:
+                          type: object
+                          properties:
+                            origin:
+                              type: array
+                              items:
+                                type: string
+                              title: 原始图片
+                            proxy:
+                              type: array
+                              items:
+                                type: string
+                              title: 转发图片
+                          required:
+                            - origin
+                            - proxy
+                          x-apifox-orders:
+                            - origin
+                            - proxy
+                          title: 图片
+                      required:
+                        - nickname
+                        - ctime
+                        - feed_id
+                        - content
+                        - img
+                      x-apifox-orders:
+                        - nickname
+                        - ctime
+                        - feed_id
+                        - content
+                        - img
+                    title: 数据组
+                  time:
+                    type: integer
+                required:
+                  - code
+                  - msg
+                  - data
+                  - time
+                x-apifox-orders:
+                  - code
+                  - msg
+                  - data
+                  - time
+              examples:
+                '1':
+                  summary: 成功示例
+                  value:
+                    code: 200
+                    msg: 接口调用成功
+                    data:
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784884971
+                        feed_id: f03faf8eeb2e636a036d0500
+                        content: ''
+                        img:
+                          origin: []
+                          proxy: []
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784879048
+                        feed_id: f03faf8ec817636a80750a00
+                        content: 这是我梦里想的样子
+                        img:
+                          origin:
+                            - >-
+                              https://r.photo.store.qq.com/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqahphL73.8Vqxdgm5VNvgxl*6c45JbUEnnLEin7Zj0TgStsvoHhJaJTeLhJpg1A51IrAyeLG5R1bEyRVVBQgcVk!/o&ek=1&kp=1&pt=0&bo=OAQyBTgEMgUBACc!&tl=1&su=0177830610&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=17f3ca01ac6ca79443476864c216e769#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                          proxy:
+                            - >-
+                              https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqahphL73.8Vqxdgm5VNvgxl*6c45JbUEnnLEin7Zj0TgStsvoHhJaJTeLhJpg1A51IrAyeLG5R1bEyRVVBQgcVk!/o&ek=1&kp=1&pt=0&bo=OAQyBTgEMgUBACc!&tl=1&su=0177830610&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=17f3ca01ac6ca79443476864c216e769#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784806337
+                        feed_id: f03faf8ec1fb616a27030300
+                        content: ''
+                        img:
+                          origin: []
+                          proxy: []
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784799883
+                        feed_id: f03faf8e8be2616ad13c0a00
+                        content: 我的闺蜜萌萌的
+                        img:
+                          origin:
+                            - >-
+                              https://r.photo.store.qq.com/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqWSAZ.Qw7nS2TWhl0yhh07tM3cX2qPf7Rnz2NSXimU5A67ikEbTSe8fTpwbHfn7hPvqSnvxgrwTdccoZMUqcOSE!/o&ek=1&kp=1&pt=0&bo=0ALyAtAC8gIDACU!&tl=1&su=0232639522&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=921a9f118a6cb6096d76f7988463b4b7#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                          proxy:
+                            - >-
+                              https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqWSAZ.Qw7nS2TWhl0yhh07tM3cX2qPf7Rnz2NSXimU5A67ikEbTSe8fTpwbHfn7hPvqSnvxgrwTdccoZMUqcOSE!/o&ek=1&kp=1&pt=0&bo=0ALyAtAC8gIDACU!&tl=1&su=0232639522&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=921a9f118a6cb6096d76f7988463b4b7#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784677824
+                        feed_id: f03faf8ec005606a10530900
+                        content: ''
+                        img:
+                          origin: []
+                          proxy: []
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784649632
+                        feed_id: f03faf8ea0975f6a78260500
+                        content: ''
+                        img:
+                          origin:
+                            - >-
+                              https://r.photo.store.qq.com/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW32Oqxj/TmEUgtj9EK6.7V8ajmQrEE2NOftIKXzjvn*XjBW00z2ShW3N5GkjREjYVradG4uAGVlH1.Mwtx0wsV06Dn4CdP6fMsDr4bvQHWpbMXTTuW8!/o&ek=1&kp=1&pt=0&bo=NAM0AzQDNAMDEDU!&tl=1&su=091497167&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=752da2a0ee340df6bb16daeaf447ec39#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                          proxy:
+                            - >-
+                              https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW32Oqxj/TmEUgtj9EK6.7V8ajmQrEE2NOftIKXzjvn*XjBW00z2ShW3N5GkjREjYVradG4uAGVlH1.Mwtx0wsV06Dn4CdP6fMsDr4bvQHWpbMXTTuW8!/o&ek=1&kp=1&pt=0&bo=NAM0AzQDNAMDEDU!&tl=1&su=091497167&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=752da2a0ee340df6bb16daeaf447ec39#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784643513
+                        feed_id: f03faf8eb97f5f6abcbe0e00
+                        content: |-
+                          这是夏琳，虽然你们不认识，但是她真的很好看
+                          （发布前已征得本人同意@{uin:161488913,nick:恋夏音,who:1} ）
+                        img:
+                          origin:
+                            - >-
+                              https://r.photo.store.qq.com/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqdApQZ1bO942i87kOPr5V5rIDYxXryb1WbYhMwBAjYYpyTFn2lxhotuT4sgFLioekq1zNfHRMQ3i5pA.tAm19Qw!/o&ek=1&kp=1&pt=0&bo=VQg*BlUIPwYDACU!&tl=1&su=0228388658&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=35311b97a1aecbbabed6e8c72ace82c5#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                            - >-
+                              https://r.photo.store.qq.com/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqdApQZ1bO942i87kOPr5V5oKMMSvKukSFNO9ZdCUnbMX3s5L76EDEILVX8N2arlY28eTCQeQexOpRKluSzodGig!/o&ek=1&kp=1&pt=0&bo=QAZABkAGQAYBACc!&tl=1&su=0233337026&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=9da4438adeb35f45d33bcf1fe1a6e8b0#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                            - >-
+                              https://r.photo.store.qq.com/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqYGMrzTYKBVYXVUYq91sSNCl573a3CNq1JzmIruR0mLGeenpHNaot8poSc7fCJPSgpBvdEpI7QYddiTGRjh9LyY!/o&ek=1&kp=1&pt=0&bo=QAZABkAGQAYBACc!&tl=1&su=076486338&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=15f496cddfeb0cdc0571213f9eaa9934#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                            - >-
+                              https://r.photo.store.qq.com/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqYGMrzTYKBVYXVUYq91sSNAF94M9.t7VZ8a27KT44.MH.OSTvKMor1hwyT262OYRslrO.KlODQ01dmmokafLBiY!/o&ek=1&kp=1&pt=0&bo=gAc4BIAHOAQBACc!&tl=1&su=0173104034&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=08fc2b11b6cc5088a072c5269056a011#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                          proxy:
+                            - >-
+                              https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqdApQZ1bO942i87kOPr5V5rIDYxXryb1WbYhMwBAjYYpyTFn2lxhotuT4sgFLioekq1zNfHRMQ3i5pA.tAm19Qw!/o&ek=1&kp=1&pt=0&bo=VQg*BlUIPwYDACU!&tl=1&su=0228388658&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=35311b97a1aecbbabed6e8c72ace82c5#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                            - >-
+                              https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqdApQZ1bO942i87kOPr5V5oKMMSvKukSFNO9ZdCUnbMX3s5L76EDEILVX8N2arlY28eTCQeQexOpRKluSzodGig!/o&ek=1&kp=1&pt=0&bo=QAZABkAGQAYBACc!&tl=1&su=0233337026&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=9da4438adeb35f45d33bcf1fe1a6e8b0#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                            - >-
+                              https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqYGMrzTYKBVYXVUYq91sSNCl573a3CNq1JzmIruR0mLGeenpHNaot8poSc7fCJPSgpBvdEpI7QYddiTGRjh9LyY!/o&ek=1&kp=1&pt=0&bo=QAZABkAGQAYBACc!&tl=1&su=076486338&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=15f496cddfeb0cdc0571213f9eaa9934#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                            - >-
+                              https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqYGMrzTYKBVYXVUYq91sSNAF94M9.t7VZ8a27KT44.MH.OSTvKMor1hwyT262OYRslrO.KlODQ01dmmokafLBiY!/o&ek=1&kp=1&pt=0&bo=gAc4BIAHOAQBACc!&tl=1&su=0173104034&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=08fc2b11b6cc5088a072c5269056a011#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784593342
+                        feed_id: f03faf8ebebb5e6a47200900
+                        content: ''
+                        img:
+                          origin: []
+                          proxy: []
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784563210
+                        feed_id: f03faf8e0a465e6a83f60300
+                        content: ''
+                        img:
+                          origin:
+                            - >-
+                              https://r.photo.store.qq.com/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW32Oqxj/TmEUgtj9EK6.7V8ajmQrEDdWE2*dfoLLEJLuMVnZxuDxUjCTRBmixWKdocogqj*yq1cuTG1PToiqkmst2XIjf*kccpff.fjBxvpwDx1UL7E!/o&ek=1&kp=1&pt=0&bo=NAM0AzQDNAMDEDU!&tl=1&su=049649551&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=9a7d5823063a49de03a25f512004214b#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                          proxy:
+                            - >-
+                              https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW32Oqxj/TmEUgtj9EK6.7V8ajmQrEDdWE2*dfoLLEJLuMVnZxuDxUjCTRBmixWKdocogqj*yq1cuTG1PToiqkmst2XIjf*kccpff.fjBxvpwDx1UL7E!/o&ek=1&kp=1&pt=0&bo=NAM0AzQDNAMDEDU!&tl=1&su=049649551&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=9a7d5823063a49de03a25f512004214b#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
+                      - nickname: 最好喝的小米粥
+                        ctime: 1784537096
+                        feed_id: f03faf8e08e05d6a46810200
+                        content: ''
+                        img:
+                          origin: []
+                          proxy: []
+                    time: 1784896270
+                '2':
+                  summary: 认证失败
+                  value:
+                    code: 400
+                    msg: uid 与 api_key 不对应，鉴权失败
+                    data: []
+                    time: 1784882456
+          headers: {}
+          x-apifox-name: 成功
+      security: []
+      x-apifox-folder: ''
+      x-apifox-status: released
+      x-run-in-apifox: https://app.apifox.com/web/project/8628263/apis/api-492412563-run
+components:
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
+
+```
