@@ -7,10 +7,10 @@
 <meta name="keywords" content="__SITE_KEYWORDS__">
 <title>__SITE_NAME__</title>
 __SITE_FAVICON_TAG__
-<link rel="stylesheet" href="/public/assets/app-shell.css">
-<script src="/public/assets/vendor/vue.global.prod.js"></script>
-<script src="/public/assets/vendor/qrcode-generator.min.js"></script>
-<script src="/public/assets/vendor/qqapi.js"></script>
+<link rel="stylesheet" href="__PUBLIC_URL__/assets/app-shell.css">
+<script src="__PUBLIC_URL__/assets/vendor/vue.global.prod.js"></script>
+<script src="__PUBLIC_URL__/assets/vendor/qrcode-generator.min.js"></script>
+<script src="__PUBLIC_URL__/assets/vendor/qqapi.js"></script>
 <style>
 .hero-card.side .hero-summary,.section-stack,.landing-quick-links,.home-product-stats{display:grid;gap:14px}
 .hero-side-item,.home-link-card,.theme-card{padding:14px 16px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
@@ -93,14 +93,14 @@ __SITE_FAVICON_TAG__
               <div class="tiny">{{ roleLabel(user) }}</div>
             </div>
           </div>
-          <a v-if="routeMode !== 'user'" class="btn ghost" href="/user">用户后台</a>
-          <a v-if="canAccessAdmin && routeMode !== 'admin'" class="btn ghost" :href="adminUrl">管理后台</a>
+          <a v-if="routeMode !== 'user'" class="btn ghost" :href="routeUrl('/user')">用户后台</a>
+          <a v-if="canAccessAdmin && routeMode !== 'admin'" class="btn ghost" :href="routeUrl(adminUrl)">管理后台</a>
           <button class="btn" @click="logout">退出登录</button>
         </template>
         <template v-else>
-          <a v-if="routeMode !== 'home'" class="btn ghost" href="/">返回首页</a>
-          <a v-if="routeMode !== 'login'" class="btn ghost" href="/login">登录</a>
-          <a v-if="routeMode !== 'register'" class="btn primary" href="/register">注册</a>
+          <a v-if="routeMode !== 'home'" class="btn ghost" :href="routeUrl('/')">返回首页</a>
+          <a v-if="routeMode !== 'login'" class="btn ghost" :href="routeUrl('/login')">登录</a>
+          <a v-if="routeMode !== 'register'" class="btn primary" :href="routeUrl('/register')">注册</a>
         </template>
       </div>
     </div>
@@ -113,10 +113,10 @@ __SITE_FAVICON_TAG__
           <h1>{{ site.name }}</h1>
           <p>专注于稳定下单、实时查单、代理售卖与额度充值体验。无论你是自己使用，还是准备搭建售卖渠道，这里都能直接开工。</p>
           <div class="home-actions">
-            <a v-if="!user" class="btn primary" href="/login">立即登录</a>
-            <a v-if="!user" class="btn ghost" href="/register">注册账号</a>
-            <a v-if="user" class="btn primary" href="/user">进入用户后台</a>
-            <a v-if="canAccessAdmin" class="btn ghost" :href="adminUrl">进入管理后台</a>
+            <a v-if="!user" class="btn primary" :href="routeUrl('/login')">立即登录</a>
+            <a v-if="!user" class="btn ghost" :href="routeUrl('/register')">注册账号</a>
+            <a v-if="user" class="btn primary" :href="routeUrl('/user')">进入用户后台</a>
+            <a v-if="canAccessAdmin" class="btn ghost" :href="routeUrl(adminUrl)">进入管理后台</a>
             <a class="btn ghost" href="https://shua-xmzkj.apifox.cn/" target="_blank" rel="noopener">接口文档</a>
           </div>
         </div>
@@ -151,15 +151,15 @@ __SITE_FAVICON_TAG__
             </div>
           </div>
           <div class="landing-quick-links">
-            <a class="home-link-card" href="/user">
+            <a class="home-link-card" :href="routeUrl('/user')">
               <h4>下单控制台</h4>
               <p>登录后即可进入用户后台，进行在线下单、查单、充值与邀请码管理。</p>
             </a>
-            <a class="home-link-card" href="/login">
+            <a class="home-link-card" :href="routeUrl('/login')">
               <h4>统一登录</h4>
               <p>普通用户、管理员、站长统一使用同一登录页，登录时强制校验图片验证码。</p>
             </a>
-            <a class="home-link-card" href="/register">
+            <a class="home-link-card" :href="routeUrl('/register')">
               <h4>快速注册</h4>
               <p>注册默认收集用户名、昵称、QQ 与密码，可按后台策略扩展邮箱或手机号。</p>
             </a>
@@ -266,8 +266,8 @@ __SITE_FAVICON_TAG__
             </div>
           </div>
           <div class="login-dual-actions">
-            <a class="btn primary" href="/user">进入用户后台</a>
-            <a v-if="canAccessAdmin" class="btn ghost" :href="adminUrl">进入管理后台</a>
+            <a class="btn primary" :href="routeUrl('/user')">进入用户后台</a>
+            <a v-if="canAccessAdmin" class="btn ghost" :href="routeUrl(adminUrl)">进入管理后台</a>
           </div>
         </div>
         <div v-else class="auth-box">
@@ -297,7 +297,7 @@ __SITE_FAVICON_TAG__
           <div class="login-dual-actions">
             <button class="btn primary" @click="submitLogin(false)">进入用户后台</button>
             <button class="btn ghost" @click="submitLogin(true)">进入管理后台</button>
-            <a class="btn ghost" href="/register">没有账号？去注册</a>
+            <a class="btn ghost" :href="routeUrl('/register')">没有账号？去注册</a>
           </div>
         </div>
       </div>
@@ -313,7 +313,7 @@ __SITE_FAVICON_TAG__
             </div>
           </div>
           <div class="login-dual-actions">
-            <a class="btn primary" href="/user">进入用户后台</a>
+            <a class="btn primary" :href="routeUrl('/user')">进入用户后台</a>
             <button class="btn ghost" @click="logout">退出当前账号</button>
           </div>
         </div>
@@ -364,7 +364,7 @@ __SITE_FAVICON_TAG__
           <div class="auth-footnote">注册成功后会自动进入用户后台，并默认生成一个 20 位邀请码。</div>
           <div class="login-dual-actions">
             <button class="btn primary" @click="submitRegister">注册并进入用户后台</button>
-            <a class="btn ghost" href="/login">已有账号？去登录</a>
+            <a class="btn ghost" :href="routeUrl('/login')">已有账号？去登录</a>
           </div>
         </div>
       </div>
@@ -459,8 +459,8 @@ __SITE_FAVICON_TAG__
         <h3>请先登录</h3>
         <p class="panel-sub">用户后台已与首页分离，请先前往统一登录页完成登录。</p>
         <div class="inline-actions">
-          <a class="btn primary" href="/login">前往登录</a>
-          <a class="btn ghost" href="/register">没有账号？去注册</a>
+          <a class="btn primary" :href="routeUrl('/login')">前往登录</a>
+          <a class="btn ghost" :href="routeUrl('/register')">没有账号？去注册</a>
         </div>
       </div>
 
@@ -1078,8 +1078,8 @@ __SITE_FAVICON_TAG__
         <h3>无后台访问权限</h3>
         <p class="panel-sub">管理后台与用户后台完全分离。请先前往统一登录页，使用管理员或站长账号登录后再进入后台。</p>
         <div class="inline-actions">
-          <a class="btn primary" href="/login">前往统一登录</a>
-          <a class="btn ghost" href="/">返回首页</a>
+          <a class="btn primary" :href="routeUrl('/login')">前往统一登录</a>
+          <a class="btn ghost" :href="routeUrl('/')">返回首页</a>
         </div>
       </div>
 
@@ -2059,6 +2059,7 @@ const app = Vue.createApp({
       homeStats: BOOT.homeStats || { product_count: 0, order_count: 0, total_quantity: 0, items: [] },
       currency: BOOT.currency || '额度',
       adminUrl: BOOT.adminUrl || BOOT.adminPath || '/admin',
+      frontController: BOOT.frontController || '/default.php',
       user: BOOT.user || null,
       loading: false,
       loadingText: '处理中...',
@@ -2109,7 +2110,7 @@ const app = Vue.createApp({
     };
   },
   computed: {
-    captchaUrl: function () { return '/captcha/image?_=' + this.captchaVersion; },
+    captchaUrl: function () { return this.routeUrl('/captcha/image?_=' + this.captchaVersion); },
     canAccessAdmin: function () {
       if (!this.user) return false;
       return ['owner', 'admin'].includes(String(this.user.account_role || ''));
@@ -2560,6 +2561,24 @@ const app = Vue.createApp({
       const suffix = params.toString();
       return suffix ? url + (url.includes('?') ? '&' : '?') + suffix : url;
     },
+    routeUrl: function (url) {
+      const source = String(url || '/');
+      if (!source.startsWith('/') || source.startsWith('//')) return source;
+      if (source === this.frontController || source.startsWith(this.frontController + '?')) return source;
+
+      const hashIndex = source.indexOf('#');
+      const hash = hashIndex >= 0 ? source.slice(hashIndex) : '';
+      const withoutHash = hashIndex >= 0 ? source.slice(0, hashIndex) : source;
+      const queryIndex = withoutHash.indexOf('?');
+      const route = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
+      const query = queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : '';
+      const params = new URLSearchParams();
+      params.set('route', route || '/');
+      new URLSearchParams(query).forEach(function (value, key) {
+        params.append(key, value);
+      });
+      return this.frontController + '?' + params.toString() + hash;
+    },
     async fetchJson(url, options) {
       const opts = options || {};
       const method = opts.method || 'GET';
@@ -2567,7 +2586,7 @@ const app = Vue.createApp({
       const silent = !!opts.silent;
       if (!silent) this.setBusy(true, opts.loadingText || '处理中...');
       try {
-        const response = await fetch(url, {
+        const response = await fetch(this.routeUrl(url), {
           method: method,
           credentials: 'same-origin',
           headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, opts.headers || {}),
@@ -2613,16 +2632,16 @@ const app = Vue.createApp({
       if (admin) body.admin = 1;
       await this.fetchJson('/auth/login', { method: 'POST', body: body, loadingText: '正在登录...' });
       this.notify('登录成功', 'success');
-      window.location.href = admin ? this.adminUrl : '/user';
+      window.location.href = this.routeUrl(admin ? this.adminUrl : '/user');
     },
     async submitRegister() {
       await this.fetchJson('/auth/register', { method: 'POST', body: this.home.register, loadingText: '正在注册...' });
       this.notify('注册成功', 'success');
-      window.location.href = '/user';
+      window.location.href = this.routeUrl('/user');
     },
     async logout() {
       await this.fetchJson('/auth/logout', { method: 'GET', loadingText: '正在退出...' });
-      window.location.href = '/';
+      window.location.href = this.routeUrl('/');
     },
     async bootstrapUser() {
       await this.loadUserProfile(true);

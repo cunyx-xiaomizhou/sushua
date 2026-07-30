@@ -8,7 +8,7 @@ use Sushua\Core\Response;
 use Sushua\Services\SettingsService;
 
 if (Config::isInstalled()) {
-    Response::redirect('/');
+    Response::redirect(route_url('/'));
 }
 
 $environmentChecks = [
@@ -225,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div><span>安装锁</span><strong class="ok">已生成</strong></div>
                 <div><span>站点名称</span><strong><?= htmlspecialchars((string) (require storage_path('config.php'))['app']['name'], ENT_QUOTES, 'UTF-8') ?></strong></div>
             </div>
-            <div class="actions"><a class="btn primary" href="/">进入系统</a></div>
+            <div class="actions"><a class="btn primary" href="<?= htmlspecialchars(route_url('/'), ENT_QUOTES, 'UTF-8') ?>">进入系统</a></div>
         <?php endif; ?>
     </main>
 </div>

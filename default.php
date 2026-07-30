@@ -14,7 +14,7 @@ if ($path === '/install' || str_starts_with($path, '/install/')) {
     exit;
 }
 if (!Config::isInstalled()) {
-    Response::redirect('/install');
+    Response::redirect(route_url('/install'));
 }
 
 try {

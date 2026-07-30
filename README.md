@@ -28,8 +28,8 @@ database/schema.sql               MySQL 建表脚本
 database/create_local_user.sql    本地 MySQL 专用账号初始化脚本（root 执行一次）
 scripts/sync_products.php         CLI 商品同步
 scripts/sync_orders.php           CLI 订单状态同步
-start-dev.cmd                     Windows 一键启动开发服务器
-start-dev.ps1                     PowerShell 启动开发服务器
+start-dev.sh                      Linux 开发服务器启动脚本
+deploy/nginx/                     Linux Nginx + PHP-FPM 配置示例
 storage/                          配置、安装锁和运行日志
 系统对接接口文档.txt              上游接口规范
 支付文档.html                     易支付接口规范
@@ -58,35 +58,20 @@ date.timezone = Asia/Shanghai
 ```bash
 php -v
 php -m
-php -S 0.0.0.0:3400 router.php
+chmod +x ./start-dev.sh
+./start-dev.sh
 ```
 
-Windows 也可以直接执行：
-
-```bat
-start-dev.cmd
-```
-
-或：
-
-```powershell
-.\start-dev.ps1
-```
+启动脚本使用服务器上已安装的系统 PHP，不会安装、停止或修改其他项目的 PHP/FPM 进程。可通过 `PORT=3401 ./start-dev.sh` 临时指定监听端口。
 ## Web 服务器路由
 
 首页、登录、注册、用户后台、管理后台和 API 都通过 `default.php` 统一分发。生产环境必须把不存在的文件或目录重写到该入口，否则 `/login`、`/register`、`/user` 等按钮会出现 404。
 
-- Apache：仓库根目录已提供 `.htaccess`，需要启用 `mod_rewrite` 并允许目录级重写（`AllowOverride All`）。
-- IIS：仓库根目录已提供 `web.config`，需要安装并启用 URL Rewrite 模块。
-- Nginx：在站点配置中加入：
+- Nginx + PHP-FPM：复制并按服务器实际路径修改 `deploy/nginx/sushua.conf.example`，确认 `root` 与 `fastcgi_pass` 指向当前站点和 PHP 8.3 FPM socket，然后只重载该站点所属的 Nginx 配置。
+- Apache：仓库根目录保留 `.htaccess` 兼容配置，需要启用 `mod_rewrite` 并允许目录级重写（`AllowOverride All`）。
+- 无法立即配置重写时：页面按钮、验证码和前端 API 会自动回退为 `/default.php?route=...`，避免由 Web 服务器直接返回 404；生产环境仍建议启用上述 Nginx/Apache 配置，以支持手工访问 `/login` 等简洁地址。
 
-```nginx
-location / {
-    try_files $uri $uri/ /default.php?$query_string;
-}
-```
-
-PHP 内置服务器请继续使用 `php -S 0.0.0.0:3400 router.php`，不要直接省略 `router.php`。
+PHP 内置服务器请使用 `./start-dev.sh`，不要直接省略 `router.php`。
 ## 安装
 
 1. 确保 `storage/` 可写。
@@ -106,8 +91,9 @@ SOURCE database/create_local_user.sql;
 
 4. 启动开发服务器：
 
-```bat
-start-dev.cmd
+```bash
+chmod +x ./start-dev.sh
+./start-dev.sh
 ```
 
 5. 浏览器打开：
@@ -228,23 +214,6 @@ SOURCE database/import_local.sql;
 * * * * * cd /path/to/Sushua && /usr/bin/php scripts/sync_orders.php >> storage/cron-orders.log 2>&1
 ```
 
-### Windows 计划任务
-
-“程序或脚本”填写系统 PHP 可执行文件路径，例如：
-
-```text
-C:\php\php.exe
-```
-
-参数填写：
-
-```text
-B:\Project Library\Project Software\Sushua\scripts\sync_products.php
-B:\Project Library\Project Software\Sushua\scripts\sync_orders.php
-```
-
-工作目录设置为项目根目录。脚本成功会输出 JSON；失败返回非 0 状态码。
-
 ## SMTP 与短信扩展
 
 ### SMTP
@@ -328,7 +297,7 @@ curl "http://服务器IP:3400/api/queryGoods?uid=10000001&api_key=YOUR_KEY"
 
 默认启动脚本现在监听 `0.0.0.0:3400`，表示允许其他机器访问当前服务器。实际能否从局域网或外网访问，还取决于：
 
-- Windows 防火墙是否放行 `3400` 端口
+- Linux 防火墙（如 ufw/firewalld）是否放行 `3400` 端口
 - 云服务器安全组是否放行 `3400` 端口
 - 是否使用正确的服务器 IP / 域名访问
 

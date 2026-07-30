@@ -70,6 +70,7 @@ final class AppController
         $adminPath = (string) $this->settings->get('admin_path', '/admin');
 
         $html = file_get_contents(view_path('app.php')) ?: '<!doctype html><html><body>视图缺失</body></html>';
+        $publicUrl = public_url();
         $brandMarkup = $siteLogo !== ''
             ? '<span class="logo logo-image"><img src="' . htmlspecialchars($siteLogo, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '"></span><span>' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '</span>'
             : '<div class="logo">米</div><span>' . htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8') . '</span>';
@@ -84,6 +85,7 @@ final class AppController
             'user' => $user,
             'adminPath' => $adminPath,
             'adminUrl' => $adminPath,
+            'frontController' => front_controller_url(),
             'currency' => $this->settings->get('currency_name', '额度'),
             'routeMode' => $this->routeMode($path),
             'currentPath' => $path,
@@ -104,6 +106,7 @@ final class AppController
         $html = str_replace('__SITE_DESCRIPTION__', htmlspecialchars($siteDescription, ENT_QUOTES, 'UTF-8'), $html);
         $html = str_replace('__SITE_KEYWORDS__', htmlspecialchars($siteKeywords, ENT_QUOTES, 'UTF-8'), $html);
         $html = str_replace('__SITE_FAVICON_TAG__', $faviconTag, $html);
+        $html = str_replace('__PUBLIC_URL__', htmlspecialchars($publicUrl, ENT_QUOTES, 'UTF-8'), $html);
         $html = str_replace('__SITE_BRAND__', $brandMarkup, $html);
         $html = str_replace('__SEO_FOOTER_BLOCK__', $footerBlock, $html);
         $html = str_replace('__BOOT__', json_encode($boot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $html);
@@ -1066,7 +1069,7 @@ final class AppController
             ],
             CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
             CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
             CURLOPT_HEADERFUNCTION => static function ($handle, string $header) use (&$responseHeaders): int {
                 $len = strlen($header);
                 $parts = explode(':', $header, 2);
