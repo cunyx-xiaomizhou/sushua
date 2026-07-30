@@ -1,20 +1,9 @@
 -- ============================================================
 -- XiaoMiSlop 业务表结构脚本
--- 若数据库与应用部署在同一台服务器，建议先使用 root 执行：
--- database/create_local_user.sql
--- 该脚本会创建本地专用数据库用户，并仅授权 xiaomi_slop.*
--- 安装页数据库主机请填写：127.0.0.1
--- 安装页数据库端口请填写：3306
--- 注意：本 schema.sql 仍然不包含 CREATE USER / GRANT，但会自动创建/选中 xiaomi_slop 数据库，
--- 这样在 MySQL Workbench 中直接执行也不会再出现 No database selected。
+-- 本文件只包含表结构和初始数据，不创建或切换固定数据库。
+-- Web 安装器会先选择数据库名输入框指定的数据库，再执行本文件。
+-- 手动执行时，请先自行 CREATE DATABASE / USE 目标数据库。
 -- ============================================================
-
-CREATE DATABASE IF NOT EXISTS `xiaomi_slop`
-  DEFAULT CHARACTER SET utf8mb4
-  DEFAULT COLLATE utf8mb4_unicode_ci;
-
-USE `xiaomi_slop`;
-
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 

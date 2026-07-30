@@ -48,17 +48,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($database === '' || $username === '') {
                 throw new RuntimeException('数据库名和用户名不能为空');
             }
+            if (!preg_match('/^[\p{L}\p{N}_$-]{1,64}$/u', $database)) {
+                throw new RuntimeException('数据库名只能包含字母、数字、下划线、短横线或美元符号，长度为 1-64 个字符');
+            }
 
-            $pdo = new PDO("mysql:host={$host};port={$port};charset=utf8mb4", $username, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-            $pdo->exec('CREATE DATABASE IF NOT EXISTS `' . str_replace('`', '', $database) . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
-            $pdo = new PDO("mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4", $username, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]);
-            $sql = file_get_contents(dirname(__DIR__) . '/database/schema.sql');
-            foreach (array_filter(array_map('trim', preg_split('/;\s*(?:\r?\n|$)/', (string) $sql))) as $statement) {
-                if ($statement !== '' && !str_starts_with($statement, '--')) {
+            $pdo = new PDO("mysql:host={$host};port={$port};charset=utf8mb4", $username, $password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ]);
+            $databaseIdentifier = '`' . str_replace('`', '``', $database) . '`';
+            try {
+                $pdo->exec("USE {$databaseIdentifier}");
+            } catch (PDOException $exception) {
+                $driverCode = (int) ($exception->errorInfo[1] ?? 0);
+                if ($driverCode !== 1049) {
+                    throw $exception;
+                }
+                $pdo->exec("CREATE DATABASE IF NOT EXISTS {$databaseIdentifier} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                $pdo->exec("USE {$databaseIdentifier}");
+            }
+
+            $sqlPath = dirname(__DIR__) . '/database/schema.sql';
+            $sql = file_get_contents($sqlPath);
+            if ($sql === false) {
+                throw new RuntimeException('无法读取数据库结构文件：' . $sqlPath);
+            }
+            $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? $sql;
+            foreach (array_filter(array_map('trim', preg_split('/;\s*(?:\r?\n|$)/', $sql))) as $statement) {
+                if ($statement !== '') {
                     $pdo->exec($statement);
                 }
             }
-
             $config = [
                 'installed' => false,
                 'app' => [
@@ -181,8 +201,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="field"><label>站点名称</label><input name="site_name" value="小米速刷系统" required></div>
                     <div class="field"><label>数据库主机</label><input name="db_host" value="127.0.0.1" required></div>
                     <div class="field"><label>数据库端口</label><input name="db_port" value="3306" required></div>
-                    <div class="field"><label>数据库名</label><input name="db_name" value="xiaomi_slop" required></div>
-                    <div class="field"><label>数据库用户名</label><input name="db_user" value="xiaomi_slop" required></div>
+                    <div class="field"><label>数据库名</label><input name="db_name" value="<?= htmlspecialchars((string) ($_POST['db_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="请输入数据库名" required></div>
+                    <div class="field"><label>数据库用户名</label><input name="db_user" value="<?= htmlspecialchars((string) ($_POST['db_user'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="请输入数据库用户名" required></div>
                     <div class="field"><label>数据库密码</label><input type="password" name="db_password"></div>
                 </div>
                 <div class="actions"><span class="muted">支持 MySQL 5.6+，同机部署建议使用 127.0.0.1:3306，可先执行 database/create_local_user.sql 创建专用账号。</span><button class="btn primary">导入数据库并继续</button></div>

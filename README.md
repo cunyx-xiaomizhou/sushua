@@ -102,6 +102,7 @@ http://服务器IP:3400/install
 ```
 
 6. 安装向导依次完成：环境检查 → 数据库配置 → 站长账号配置。
+   - 安装器会使用数据库配置页填写的数据库名，不会强制切换到 `xiaomi_slop`。
 7. 安装成功后会生成：
    - `storage/config.php`
    - `storage/install.lock`
