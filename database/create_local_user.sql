@@ -19,3 +19,6 @@ GRANT ALL PRIVILEGES ON `xiaomi_slop`.* TO 'xiaomi_slop'@'127.0.0.1';
 
 -- 4. 刷新权限
 FLUSH PRIVILEGES;
+
+-- 5. 选中业务数据库，后续可在同一个 SQL 会话中继续执行 schema.sql
+USE `xiaomi_slop`;

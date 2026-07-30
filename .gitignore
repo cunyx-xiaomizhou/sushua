@@ -7,3 +7,10 @@
 /storage/*.php
 /storage/*.lock
 /storage/*.pending.php
+/runtime/
+/cache/
+/.codex_tmp_*
+/.inspect_*
+/.tmp_*
+/public/assets/*.bak-*
+/views/*.bak-*

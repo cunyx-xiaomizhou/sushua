@@ -17,3 +17,9 @@ spl_autoload_register(static function (string $class): void {
 
 \XiaoMiSlop\Core\Config::load();
 \XiaoMiSlop\Core\Session::start();
+
+$caBundle = curl_ca_bundle_path();
+if ($caBundle) {
+    ini_set('openssl.cafile', $caBundle);
+    ini_set('curl.cainfo', $caBundle);
+}

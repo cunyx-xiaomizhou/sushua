@@ -5,9 +5,15 @@
 -- 该脚本会创建本地专用数据库用户，并仅授权 xiaomi_slop.*
 -- 安装页数据库主机请填写：127.0.0.1
 -- 安装页数据库端口请填写：3306
--- 注意：本 schema.sql 仅包含业务建表语句，不包含 CREATE USER / GRANT，
--- 以避免普通数据库账号在安装时因权限不足而导入失败。
+-- 注意：本 schema.sql 仍然不包含 CREATE USER / GRANT，但会自动创建/选中 xiaomi_slop 数据库，
+-- 这样在 MySQL Workbench 中直接执行也不会再出现 No database selected。
 -- ============================================================
+
+CREATE DATABASE IF NOT EXISTS `xiaomi_slop`
+  DEFAULT CHARACTER SET utf8mb4
+  DEFAULT COLLATE utf8mb4_unicode_ci;
+
+USE `xiaomi_slop`;
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -353,3 +359,46 @@ CREATE TABLE IF NOT EXISTS system_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+
+CREATE TABLE IF NOT EXISTS product_exchange_codes (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  code VARCHAR(160) NOT NULL,
+  creator_user_id INT UNSIGNED NOT NULL,
+  creator_uid_snapshot BIGINT UNSIGNED NOT NULL,
+  creator_name_snapshot VARCHAR(120) NULL,
+  product_id INT UNSIGNED NOT NULL,
+  product_sign_snapshot VARCHAR(120) NOT NULL,
+  product_name_snapshot VARCHAR(160) NOT NULL,
+  quantity INT NOT NULL,
+  step_num_snapshot INT NOT NULL DEFAULT 1,
+  price_snapshot BIGINT NOT NULL DEFAULT 0,
+  generation_fee BIGINT NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'unused',
+  redeemer_user_id INT UNSIGNED NULL,
+  redeemer_ip VARCHAR(45) NULL,
+  redeemer_order_id INT UNSIGNED NULL,
+  redeemer_order_no VARCHAR(40) NULL,
+  extra_json LONGTEXT NULL,
+  used_at DATETIME NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_product_exchange_code (code),
+  KEY idx_exchange_creator (creator_user_id),
+  KEY idx_exchange_order (redeemer_order_id),
+  KEY idx_exchange_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS product_exchange_code_logs (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  exchange_code_id INT UNSIGNED NOT NULL,
+  action VARCHAR(40) NOT NULL,
+  operator_user_id INT UNSIGNED NULL,
+  ip VARCHAR(45) NULL,
+  context_json LONGTEXT NULL,
+  created_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_exchange_log_code (exchange_code_id),
+  KEY idx_exchange_log_action (action)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

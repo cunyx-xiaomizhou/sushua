@@ -22,6 +22,40 @@ function public_path(string $path = ''): string
     return base_path('public/' . ltrim($path, '/\\'));
 }
 
+function runtime_path(string $path = ''): string
+{
+    return base_path('runtime/' . ltrim($path, '/\\'));
+}
+
+function curl_ca_bundle_path(): ?string
+{
+    $candidates = array_filter([
+        get_cfg_var('openssl.cafile') ?: null,
+        ini_get('openssl.cafile') ?: null,
+        ini_get('curl.cainfo') ?: null,
+        runtime_path('certs/cacert.pem'),
+        runtime_path('cacert.pem'),
+        storage_path('certs/cacert.pem'),
+    ], static fn (mixed $value): bool => is_string($value) && trim($value) !== '');
+
+    foreach ($candidates as $candidate) {
+        $candidate = (string) $candidate;
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+    }
+
+    return null;
+}
+
+function apply_curl_ssl_defaults(\CurlHandle $ch): void
+{
+    $caBundle = curl_ca_bundle_path();
+    if ($caBundle) {
+        curl_setopt($ch, CURLOPT_CAINFO, $caBundle);
+    }
+}
+
 function now(): string
 {
     return date('Y-m-d H:i:s');

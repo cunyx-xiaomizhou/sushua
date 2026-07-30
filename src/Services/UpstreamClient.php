@@ -45,6 +45,7 @@ final class UpstreamClient
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_HTTPHEADER => ['Accept: application/json'],
         ]);
+        apply_curl_ssl_defaults($ch);
         $body = curl_exec($ch);
         if ($body === false) {
             throw new RuntimeException('上游请求失败：' . curl_error($ch));

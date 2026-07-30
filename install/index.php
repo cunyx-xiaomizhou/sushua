@@ -87,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $config = require $pending;
             $account = trim((string) ($_POST['owner_username'] ?? ''));
             $password = (string) ($_POST['owner_password'] ?? '');
+            $ownerQq = trim((string) ($_POST['owner_qq'] ?? ''));
             $adminPath = '/' . trim((string) ($_POST['admin_path'] ?? 'admin'), '/');
 
             if (!preg_match('/^[A-Za-z0-9]{4,32}$/', $account)) {
@@ -94,6 +95,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (strlen($password) < 8) {
                 throw new RuntimeException('站长密码至少8位');
+            }
+            if (!preg_match('/^[1-9][0-9]{4,14}$/', $ownerQq)) {
+                throw new RuntimeException('请填写有效的站长 QQ 号');
             }
             if (!preg_match('#^/[A-Za-z0-9_-]{2,40}$#', $adminPath)) {
                 throw new RuntimeException('后台路径只能使用 2-40 位英文、数字、下划线或中划线');
@@ -105,10 +109,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             \XiaoMiSlop\Core\Config::reset();
             $pdo = \XiaoMiSlop\Core\Database::connection();
             $now = date('Y-m-d H:i:s');
-            $pdo->prepare('INSERT INTO user_groups (group_code,name,description,threshold_mode,threshold_value,markup_mode,markup_value,recharge_bonus_rate,allow_api_default,is_default_register,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute(['default', '普通用户', '默认注册用户组', 'none', 0, 'fixed', 0, 1, 0, 1, 0, $now, $now]);
+            $pdo->prepare('INSERT INTO user_groups (group_code,name,description,threshold_mode,threshold_value,markup_mode,markup_value,recharge_bonus_rate,allow_api_default,is_default_register,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+                ->execute(['default', '普通用户', '默认注册用户组', 'none', 0, 'fixed', 0, 1, 0, 1, 0, $now, $now]);
             $groupId = (int) $pdo->lastInsertId();
             $uid = random_int(10000000, 99999999);
-            $pdo->prepare('INSERT INTO users (uid,username,nickname,qq,password_hash,user_group_id,account_role,strategy_user,strategy_agent,api_key,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$uid, $account, '站长', '10000', password_hash($password, PASSWORD_DEFAULT), $groupId, 'owner', 1, 1, str_random(40), 'active', $now, $now]);
+            $avatar = 'https://q1.qlogo.cn/g?b=qq&nk=' . $ownerQq . '&s=100';
+            $pdo->prepare('INSERT INTO users (uid,username,nickname,qq,avatar,password_hash,user_group_id,account_role,strategy_user,strategy_agent,api_key,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+                ->execute([$uid, $account, '站长', $ownerQq, $avatar, password_hash($password, PASSWORD_DEFAULT), $groupId, 'owner', 0, 0, null, 'active', $now, $now]);
             $settings = new SettingsService();
             $settings->seedDefaults();
             $settings->set('admin_path', $adminPath);
@@ -129,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>安装 · 小米速刷系统</title>
 <style>
-:root{--bg:#f4f7fb;--ink:#132238;--muted:#63738a;--primary:#5b5cf0;--card:#fff}*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,"Microsoft Yahei",sans-serif;background:radial-gradient(circle at 20% 0,#e9e8ff,transparent 35%),var(--bg);color:var(--ink);min-height:100vh;display:grid;place-items:center;padding:24px}.wrap{width:min(1060px,100%);background:#ffffffd9;border:1px solid #e5eaf4;backdrop-filter:blur(18px);border-radius:28px;box-shadow:0 30px 60px rgba(24,37,71,.12);display:grid;grid-template-columns:300px 1fr;overflow:hidden}.side{padding:36px 30px;background:linear-gradient(180deg,#1d2450,#4c50d8 60%,#7d77ff);color:#fff}.side h1{margin:0 0 12px;font-size:34px}.side p{margin:0;color:#e7eaff;line-height:1.7}.steps{margin-top:28px;display:flex;flex-direction:column;gap:12px}.steps div{padding:14px 15px;border-radius:15px;background:#ffffff14;border:1px solid #ffffff18;display:flex;align-items:center;gap:12px}.steps .num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#ffffff24;font-weight:800}.steps .active{background:#fff;color:#24325b}.main{padding:34px 38px}.eyebrow{display:inline-flex;padding:6px 12px;border-radius:999px;background:#ecedff;color:#5455df;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.main h2{margin:18px 0 8px;font-size:30px}.muted{color:var(--muted)}.alert{padding:13px 15px;border-radius:12px;margin:20px 0;background:#fff4e5;color:#a65000}.success{background:#ecfdf3;color:#137a43}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.field{margin:14px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}.field input{width:100%;padding:13px 14px;border:1px solid #dce2ed;border-radius:12px;font:inherit;outline:none}.field input:focus{border-color:var(--primary);box-shadow:0 0 0 4px #5b5cf018}.actions{display:flex;justify-content:space-between;gap:12px;margin-top:26px}.btn{border:0;border-radius:12px;padding:13px 18px;font-weight:700;cursor:pointer;background:#eef0f8;color:#26324a}.btn.primary{background:var(--primary);color:#fff}.check{padding:18px;border:1px solid #e4e9f2;border-radius:16px;background:#fafbff;margin:22px 0}.check div{display:flex;justify-content:space-between;padding:7px 0}.ok{color:#168852}.bad{color:#b42318}@media(max-width:720px){.wrap{grid-template-columns:1fr}.side{padding:24px}.steps{display:none}.main{padding:28px}.grid{grid-template-columns:1fr}}
+:root{--bg:#f4f7fb;--ink:#132238;--muted:#63738a;--primary:#5b5cf0;--card:#fff}*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,"Microsoft Yahei",sans-serif;background:radial-gradient(circle at 20% 0,#e9e8ff,transparent 35%),var(--bg);color:var(--ink);min-height:100vh;display:grid;place-items:center;padding:24px}.wrap{width:min(1060px,100%);background:#ffffffd9;border:1px solid #e5eaf4;backdrop-filter:blur(18px);border-radius:28px;box-shadow:0 30px 60px rgba(24,37,71,.12);display:grid;grid-template-columns:300px 1fr;overflow:hidden}.side{padding:36px 30px;background:linear-gradient(180deg,#1d2450,#4c50d8 60%,#7d77ff);color:#fff}.side h1{margin:0 0 12px;font-size:34px}.side p{margin:0;color:#e7eaff;line-height:1.7}.steps{margin-top:28px;display:flex;flex-direction:column;gap:12px}.steps div{padding:14px 15px;border-radius:15px;background:#ffffff14;border:1px solid #ffffff18;display:flex;align-items:center;gap:12px}.steps .num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#ffffff24;font-weight:800}.steps .active{background:#fff;color:#24325b}.main{padding:34px 38px}.eyebrow{display:inline-flex;padding:6px 12px;border-radius:999px;background:#ecedff;color:#5455df;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.main h2{margin:18px 0 8px;font-size:30px}.muted{color:var(--muted)}.alert{padding:13px 15px;border-radius:12px;margin:20px 0;background:#fff4e5;color:#a65000}.success{background:#ecfdf3;color:#137a43}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.field{margin:14px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}.field input{width:100%;padding:13px 14px;border:1px solid #dce2ed;border-radius:12px;font:inherit;outline:none}.field input:focus{border-color:var(--primary);box-shadow:0 0 0 4px #5b5cf018}.actions{display:flex;justify-content:space-between;gap:12px;margin-top:26px}.btn{border:0;border-radius:12px;padding:13px 18px;font-weight:700;cursor:pointer;background:#eef0f8;color:#26324a;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.btn.primary{background:var(--primary);color:#fff}.check{padding:18px;border:1px solid #e4e9f2;border-radius:16px;background:#fafbff;margin:22px 0}.check div{display:flex;justify-content:space-between;padding:7px 0}.ok{color:#168852}.bad{color:#b42318}.hint{font-size:13px;color:#63738a;line-height:1.7;margin-top:6px}@media(max-width:720px){.wrap{grid-template-columns:1fr}.side{padding:24px}.steps{display:none}.main{padding:28px}.grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -147,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <main class="main">
         <div class="eyebrow">Installer</div>
         <h2><?= $step===1?'准备安装':($step===2?'数据库配置':($step===3?'创建站长账号':'安装完成')) ?></h2>
-        <p class="muted"><?= $step===1?'先确认运行环境满足 PHP 8.3、PDO、CURL 与可写目录要求。':($step===2?'配置 MySQL 5.6 或更高版本数据库。':($step===3?'设置后台路径与站长登录账号。':'系统已就绪，可以开始使用。')) ?></p>
+        <p class="muted"><?= $step===1?'先确认运行环境满足 PHP 8.3、PDO、CURL 与可写目录要求。':($step===2?'配置 MySQL 5.6 或更高版本数据库。':($step===3?'设置后台路径、站长账号、密码与 QQ 头像来源。':'系统已就绪，可以开始使用。')) ?></p>
 
         <?php if($error): ?>
             <div class="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
@@ -178,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="field"><label>数据库用户名</label><input name="db_user" value="xiaomi_slop" required></div>
                     <div class="field"><label>数据库密码</label><input type="password" name="db_password"></div>
                 </div>
-                <div class="actions"><span class="muted">支持 MySQL 5.6+，同机部署建议使用 127.0.0.1:3306，可先执行 database/create_local_user.sql 创建专用账号</span><button class="btn primary">导入数据库并继续</button></div>
+                <div class="actions"><span class="muted">支持 MySQL 5.6+，同机部署建议使用 127.0.0.1:3306，可先执行 database/create_local_user.sql 创建专用账号。</span><button class="btn primary">导入数据库并继续</button></div>
             </form>
         <?php elseif($step===3): ?>
             <form method="post">
@@ -187,13 +194,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="grid">
                     <div class="field"><label>站长账号</label><input name="owner_username" pattern="[A-Za-z0-9]{4,32}" required></div>
                     <div class="field"><label>站长密码</label><input type="password" name="owner_password" minlength="8" required></div>
+                    <div class="field"><label>站长 QQ</label><input name="owner_qq" pattern="[1-9][0-9]{4,14}" required></div>
                 </div>
+                <div class="hint">站长 QQ 将用于默认头像地址生成，用户安装完成后也可以在个人资料里重新修改 QQ 和头像。</div>
                 <div class="actions"><span class="muted">后台登录强制图片验证码。</span><button class="btn primary">完成安装</button></div>
             </form>
         <?php else: ?>
             <div class="check">
                 <div><span>安装锁</span><strong class="ok">已生成</strong></div>
-                <div><span>默认后台</span><strong><?= htmlspecialchars((string) (require storage_path('config.php'))['app']['name'], ENT_QUOTES, 'UTF-8') ?></strong></div>
+                <div><span>站点名称</span><strong><?= htmlspecialchars((string) (require storage_path('config.php'))['app']['name'], ENT_QUOTES, 'UTF-8') ?></strong></div>
             </div>
             <div class="actions"><a class="btn primary" href="/">进入系统</a></div>
         <?php endif; ?>

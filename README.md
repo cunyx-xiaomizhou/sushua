@@ -28,40 +28,40 @@ database/schema.sql               MySQL 建表脚本
 database/create_local_user.sql    本地 MySQL 专用账号初始化脚本（root 执行一次）
 scripts/sync_products.php         CLI 商品同步
 scripts/sync_orders.php           CLI 订单状态同步
-runtime/php83/                    项目内置 PHP 8.3 运行时
 start-dev.cmd                     Windows 一键启动开发服务器
 start-dev.ps1                     PowerShell 启动开发服务器
-php.cmd                           使用项目内置 PHP 执行任意命令
 storage/                          配置、安装锁和运行日志
 系统对接接口文档.txt              上游接口规范
 支付文档.html                     易支付接口规范
 ```
 
-## 项目内置 PHP
+## PHP 环境要求
 
-本项目已内置 **Windows x64 NTS 版 PHP 8.3**，无需依赖系统环境变量。
+项目仓库不再包含 PHP 运行环境。部署或本地开发前，请自行安装 **PHP 8.3 或更高版本**，并确保 `php` 命令已加入系统 `PATH`。
 
-当前可执行文件：
+必须启用以下扩展：
 
-```text
-B:\Project Library\Project Software\XiaoMiSlop\runtime\php83\php.exe
+- `curl`
+- `mbstring`
+- `mysqli`
+- `openssl`
+- `pdo_mysql`
+
+建议设置：
+
+```ini
+date.timezone = Asia/Shanghai
 ```
-
-已配置：
-
-- `date.timezone = Asia/Shanghai`
-- `extension_dir = "ext"`
-- 已启用扩展：`curl`、`mbstring`、`mysqli`、`openssl`、`pdo_mysql`
 
 常用命令：
 
-```bat
-php.cmd -v
-php.cmd -m
-php.cmd -S 127.0.0.1:3400 router.php
+```bash
+php -v
+php -m
+php -S 0.0.0.0:3400 router.php
 ```
 
-也可以直接双击或执行：
+Windows 也可以直接执行：
 
 ```bat
 start-dev.cmd
@@ -72,7 +72,6 @@ start-dev.cmd
 ```powershell
 .\start-dev.ps1
 ```
-
 ## 安装
 
 1. 确保 `storage/` 可写。
@@ -99,7 +98,7 @@ start-dev.cmd
 5. 浏览器打开：
 
 ```text
-http://127.0.0.1:3400/install
+http://服务器IP:3400/install
 ```
 
 6. 安装向导依次完成：环境检查 → 数据库配置 → 站长账号配置。
@@ -108,6 +107,29 @@ http://127.0.0.1:3400/install
    - `storage/install.lock`
 
 已安装状态下访问 `/install` 会被拒绝。如需重新安装，必须先手动删除 `storage/install.lock`，并按需删除/重建数据库；不要在生产环境直接开放安装入口。
+
+## 手动执行 SQL 时的注意事项
+
+如果在 MySQL Workbench 或其他 SQL 编辑器中直接打开 `database/schema.sql`，请先选择数据库，否则会出现 `Error Code: 1046. No database selected`。
+
+推荐做法：
+
+1. 先用 root 执行 `database/create_local_user.sql`；该脚本最后会执行 `USE xiaomi_slop`。
+2. 在左侧 `SCHEMAS` 中双击 `xiaomi_slop`，让它变成默认数据库。
+3. 再执行 `database/schema.sql`。
+
+也可以先手动执行：
+
+```sql
+CREATE DATABASE IF NOT EXISTS `xiaomi_slop` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `xiaomi_slop`;
+```
+
+MySQL 命令行可以使用辅助脚本：
+
+```sql
+SOURCE database/import_local.sql;
+```
 
 ## 推荐数据库连接参数
 
@@ -192,10 +214,10 @@ http://127.0.0.1:3400/install
 
 ### Windows 计划任务
 
-程序填写项目内置 PHP：
+“程序或脚本”填写系统 PHP 可执行文件路径，例如：
 
 ```text
-B:\Project Library\Project Software\XiaoMiSlop\runtime\php83\php.exe
+C:\php\php.exe
 ```
 
 参数填写：
@@ -259,7 +281,7 @@ interface ProviderInterface
 示例：
 
 ```bash
-curl "http://127.0.0.1:3400/api/queryGoods?uid=10000001&api_key=YOUR_KEY"
+curl "http://服务器IP:3400/api/queryGoods?uid=10000001&api_key=YOUR_KEY"
 ```
 
 统一返回结构：
@@ -286,6 +308,23 @@ curl "http://127.0.0.1:3400/api/queryGoods?uid=10000001&api_key=YOUR_KEY"
 - 退款会按订单实际用户花费返还额度，并写入余额流水。
 - 管理员“仅退款”只处理站内余额，不向上游发起退单。
 
+## 外网访问说明
+
+默认启动脚本现在监听 `0.0.0.0:3400`，表示允许其他机器访问当前服务器。实际能否从局域网或外网访问，还取决于：
+
+- Windows 防火墙是否放行 `3400` 端口
+- 云服务器安全组是否放行 `3400` 端口
+- 是否使用正确的服务器 IP / 域名访问
+
+访问示例：
+
+```text
+http://服务器IP:3400/install
+http://服务器IP:3400/
+```
+
+> 注意：`0.0.0.0` 只是监听地址，不是浏览器访问地址。浏览器里请使用实际服务器 IP 或域名。
+
 ## 安全与上线检查
 
 - 生产环境关闭 `storage/config.php` 中的 debug。
@@ -297,4 +336,4 @@ curl "http://127.0.0.1:3400/api/queryGoods?uid=10000001&api_key=YOUR_KEY"
 
 ## 当前验证方式
 
-当前仓库已完成 PHP 语法级静态检查。现在可以直接使用项目内置 PHP 继续做端到端测试：注册、管理员强制验证码、商品同步、普通/对接下单、订单同步/补单/退款、卡密兑换和易支付回调。
+当前仓库已完成 PHP 语法级静态检查。安装并配置系统 PHP 后，可继续做端到端测试：注册、管理员强制验证码、商品同步、普通/对接下单、订单同步/补单/退款、卡密兑换和易支付回调。

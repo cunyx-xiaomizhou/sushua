@@ -17,7 +17,7 @@ final class ApiAccessService
             }
         }
 
-        $conditionMode = (string) $settings->get('api_condition_mode', 'total_consume');
+        $conditionMode = (string) $settings->get('api_condition_mode', 'total_recharge');
         $operator = (string) $settings->get('api_condition_operator', '>=');
         $expected = (int) $settings->get('api_condition_value', '0');
         $current = match ($conditionMode) {
@@ -35,23 +35,45 @@ final class ApiAccessService
         };
 
         $groupAllow = (int) ($group['allow_api_default'] ?? 0) === 1;
-        $override = $user['api_enabled_override'];
-        $overrideAllow = $override === null ? null : ((int) $override === 1);
-        $isAgent = (int) ($user['strategy_agent'] ?? 0) === 1;
-        $allowed = $isAgent && $conditionPassed && ($overrideAllow ?? $groupAllow);
-        if ($user['status'] !== 'active') {
-            $allowed = false;
+        $override = $user['api_enabled_override'] ?? null;
+        $policy = $this->connectPolicy($user);
+
+        $policyAllow = match ($policy) {
+            'agent' => true,
+            'user' => false,
+            default => $groupAllow,
+        };
+        if ($override !== null && $override !== '') {
+            $policyAllow = (int) $override === 1;
         }
+
+        $accountActive = (($user['status'] ?? 'active') === 'active');
+        $canGenerateKey = $conditionPassed && $accountActive;
+        $allowed = $policyAllow && $accountActive;
 
         return [
             'allow' => $allowed,
+            'can_generate_key' => $canGenerateKey,
             'condition_mode' => $conditionMode,
             'condition_operator' => $operator,
             'condition_value' => $expected,
             'condition_current' => $current,
+            'condition_passed' => $conditionPassed,
             'group_default' => $groupAllow,
             'override' => $override,
-            'is_agent' => $isAgent,
+            'connect_policy' => $policy,
+            'is_agent' => $policy === 'agent',
         ];
+    }
+
+    private function connectPolicy(array $user): string
+    {
+        if ((int) ($user['strategy_agent'] ?? 0) === 1) {
+            return 'agent';
+        }
+        if ((int) ($user['strategy_user'] ?? 0) === 1) {
+            return 'user';
+        }
+        return 'default';
     }
 }

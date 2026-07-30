@@ -20,7 +20,8 @@ if (!Config::isInstalled()) {
 try {
     (new AppController())->dispatch(new Request());
 } catch (Throwable $e) {
-    $isApi = str_starts_with(request_path(), '/api/') || str_starts_with(request_path(), '/admin/api/');
+    $path = request_path();
+    $isApi = str_starts_with($path, '/api/') || preg_match('#^/[^/]+/api/#', $path) === 1;
     if ($isApi) {
         Response::error($e->getMessage(), 500);
     }

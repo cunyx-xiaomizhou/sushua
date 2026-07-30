@@ -12,7 +12,7 @@ final class CardService
     private PDO $pdo;
     public function __construct() { $this->pdo = Database::connection(); }
 
-    public function generate(int $adminId, int $count, int $amount, int $uses, string $prefix = '', string $note = ''): array
+    public function generate(int $adminId, int $count, int $amount, int $uses, string $prefix = '', string $note = '', ?string $customCode = null): array
     {
         $count = max(1, min(500, $count));
         $amount = $this->validateAmount($amount);
@@ -22,9 +22,16 @@ final class CardService
             throw new RuntimeException('卡密前缀只能是1-16位英文或数字');
         }
         $note = trim($note);
+        $customCode = $customCode !== null ? strtoupper(trim($customCode)) : null;
+        if ($customCode !== null && $customCode !== '') {
+            if (!preg_match('/^[A-Z0-9]{8,64}$/', $customCode)) {
+                throw new RuntimeException('自定义卡密必须是8-64位英文或数字');
+            }
+            $count = 1;
+        }
         $result = [];
         for ($i = 0; $i < $count; $i++) {
-            $code = $this->uniqueCode($prefix);
+            $code = ($customCode !== null && $customCode !== '') ? $customCode : $this->uniqueCode($prefix);
             try {
                 $this->pdo->prepare('INSERT INTO card_keys (code, amount, total_uses, remaining_uses, enabled, note, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)')->execute([$code, $amount, $uses, $uses, $note, $adminId, now(), now()]);
             } catch (\PDOException $e) {

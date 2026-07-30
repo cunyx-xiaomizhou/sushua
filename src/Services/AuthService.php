@@ -113,14 +113,24 @@ final class AuthService
             throw new RuntimeException('当前注册必须填写手机号');
         }
 
+        $this->assertUsernameAvailable($username);
         $defaultGroupId = $this->defaultGroupId();
         $inviterId = null;
         $inviteCodeId = null;
+        $defaultFlags = $this->resolveConnectPolicyFlags(
+            null,
+            $this->settings->get('default_register_strategy_user', '0'),
+            $this->settings->get('default_register_strategy_agent', '0')
+        );
+        $strategyUser = $defaultFlags['strategy_user'];
+        $strategyAgent = $defaultFlags['strategy_agent'];
+        $avatar = $this->qqAvatarUrl($qq);
+
         $this->pdo->beginTransaction();
         try {
             if ($inviteCode !== '') {
                 $stmt = $this->pdo->prepare('SELECT * FROM invite_codes WHERE code = ? AND active = 1 LIMIT 1 FOR UPDATE');
-                $stmt->execute([strtoupper($inviteCode)]);
+                $stmt->execute([$inviteCode]);
                 $invite = $stmt->fetch();
                 if (!$invite) {
                     throw new RuntimeException('邀请码不存在或已失效');
@@ -133,15 +143,27 @@ final class AuthService
             }
 
             $uid = $this->generateUid();
-            $strategyUser = $this->settings->get('default_register_strategy_user', '1') === '1' ? 1 : 0;
-            $strategyAgent = $this->settings->get('default_register_strategy_agent', '0') === '1' ? 1 : 0;
             $apiKey = $strategyAgent ? str_random(40) : null;
             $stmt = $this->pdo->prepare('INSERT INTO users (uid, username, nickname, qq, email, mobile, avatar, password_hash, user_group_id, account_role, strategy_user, strategy_agent, api_key, api_key_generated_at, status, balance, total_recharge, total_consume, invite_count, inviter_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?, ?)');
             $stmt->execute([
-                $uid, $username, $nickname, $qq, $email ?: null, $mobile ?: null,
-                'https://q1.qlogo.cn/g?b=qq&nk=' . $qq . '&s=100', password_hash($password, PASSWORD_DEFAULT),
-                $defaultGroupId, 'member', $strategyUser, $strategyAgent, $apiKey, $apiKey ? now() : null,
-                'active', $inviterId, now(), now(),
+                $uid,
+                $username,
+                $nickname,
+                $qq,
+                $email ?: null,
+                $mobile ?: null,
+                $avatar,
+                password_hash($password, PASSWORD_DEFAULT),
+                $defaultGroupId,
+                'member',
+                $strategyUser,
+                $strategyAgent,
+                $apiKey,
+                $apiKey ? now() : null,
+                'active',
+                $inviterId,
+                now(),
+                now(),
             ]);
 
             $userId = (int) $this->pdo->lastInsertId();
@@ -152,7 +174,9 @@ final class AuthService
             (new InviteService())->ensureDefaultCode($userId);
             $this->pdo->commit();
         } catch (\Throwable $e) {
-            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $e;
         }
         return $this->login($username, $password);
@@ -160,11 +184,15 @@ final class AuthService
 
     public function resetApiKey(int $userId): string
     {
-        $check = $this->pdo->prepare('SELECT strategy_agent, status FROM users WHERE id = ? LIMIT 1');
+        $check = $this->pdo->prepare('SELECT * FROM users WHERE id = ? LIMIT 1');
         $check->execute([$userId]);
         $target = $check->fetch();
-        if (!$target || (int) $target['strategy_agent'] !== 1 || $target['status'] === 'deleted') {
-            throw new RuntimeException('只有 Agent 策略用户可以生成 API Key');
+        if (!$target || ($target['status'] ?? '') === 'deleted') {
+            throw new RuntimeException('用户不存在或已被删除');
+        }
+        $access = (new ApiAccessService())->status($target);
+        if (!(bool) ($access['can_generate_key'] ?? false)) {
+            throw new RuntimeException('当前账号暂未满足 API Key 生成条件');
         }
         $new = str_random(40);
         $stmt = $this->pdo->prepare('UPDATE users SET api_key = ?, api_key_generated_at = ?, updated_at = ? WHERE id = ?');
@@ -177,7 +205,6 @@ final class AuthService
         $id = (int) ($data['id'] ?? 0);
         $isCreate = $id <= 0;
         $nickname = trim((string) ($data['nickname'] ?? ''));
-        $avatar = trim((string) ($data['avatar'] ?? ''));
         $username = trim((string) ($data['username'] ?? ''));
         $qq = trim((string) ($data['qq'] ?? '0'));
         $password = trim((string) ($data['password'] ?? ''));
@@ -185,11 +212,16 @@ final class AuthService
         $mobile = trim((string) ($data['mobile'] ?? ''));
         $status = (string) ($data['status'] ?? 'active');
         $groupId = (int) ($data['user_group_id'] ?? $this->defaultGroupId());
-        $strategyUser = !empty($data['strategy_user']) ? 1 : 0;
-        $strategyAgent = !empty($data['strategy_agent']) ? 1 : 0;
+        $flags = $this->resolveConnectPolicyFlags(
+            array_key_exists('connect_policy', $data) ? (string) $data['connect_policy'] : null,
+            $data['strategy_user'] ?? null,
+            $data['strategy_agent'] ?? null
+        );
+        $strategyUser = $flags['strategy_user'];
+        $strategyAgent = $flags['strategy_agent'];
         $role = (string) ($data['account_role'] ?? 'member');
         $balance = (int) ($data['balance'] ?? 0);
-        $apiOverride = array_key_exists('api_enabled_override', $data) && $data['api_enabled_override'] != '' ? (int) $data['api_enabled_override'] : null;
+        $apiOverride = array_key_exists('api_enabled_override', $data) && $data['api_enabled_override'] !== '' ? (int) $data['api_enabled_override'] : null;
         $allowedRoles = ['member', 'agent', 'admin', 'owner'];
         $allowedStatuses = ['active', 'banned'];
 
@@ -211,17 +243,44 @@ final class AuthService
         if ($balance < 0) {
             throw new RuntimeException('余额不能为负数');
         }
+        if (in_array($role, ['admin', 'owner'], true)) {
+            $strategyUser = 0;
+            $strategyAgent = 0;
+            $apiOverride = null;
+        }
         if ($role !== 'member' && $role !== 'agent' && $actor['account_role'] !== 'owner') {
             throw new RuntimeException('只有站长才能创建或修改后台账号');
         }
-        if ($actor['account_role'] !== 'owner' && $id > 0) {
-            $targetStmt = $this->pdo->prepare('SELECT account_role FROM users WHERE id = ? LIMIT 1');
+        $target = null;
+        if (!$isCreate) {
+            $targetStmt = $this->pdo->prepare('SELECT id, account_role, qq FROM users WHERE id = ? LIMIT 1');
             $targetStmt->execute([$id]);
-            $targetRole = $targetStmt->fetchColumn();
-            if (in_array((string) $targetRole, ['owner', 'admin'], true)) {
+            $target = $targetStmt->fetch();
+            if (!$target) {
+                throw new RuntimeException('用户不存在');
+            }
+            $targetRole = (string) ($target['account_role'] ?? '');
+            if ($targetRole === 'owner') {
+                if ($role !== 'owner') {
+                    throw new RuntimeException('站长身份不可更改');
+                }
+                if ((int) $actor['id'] !== $id) {
+                    throw new RuntimeException('站长账号不允许在此处被他人修改');
+                }
+            } elseif ($role === 'owner') {
+                throw new RuntimeException('不允许将其他用户修改为站长');
+            }
+        } elseif ($role === 'owner') {
+            throw new RuntimeException('不允许直接创建站长账号');
+        }
+        if ($actor['account_role'] !== 'owner' && $id > 0) {
+            if (in_array((string) ($target['account_role'] ?? ''), ['owner', 'admin'], true)) {
                 throw new RuntimeException('管理员不能修改站长或管理员账号');
             }
         }
+
+        $this->assertUsernameAvailable($username, $isCreate ? 0 : $id);
+        $avatarValue = $qq !== '' ? $this->qqAvatarUrl($qq) : (($target['qq'] ?? '') !== '' ? $this->qqAvatarUrl((string) $target['qq']) : null);
 
         if ($isCreate) {
             if ($password === '') {
@@ -232,7 +291,6 @@ final class AuthService
             }
             $this->pdo->beginTransaction();
             try {
-                // 初始余额统一从 0 建立，任何非零初始值都通过余额服务落账。
                 $stmt = $this->pdo->prepare('INSERT INTO users (uid, username, nickname, qq, email, mobile, avatar, password_hash, user_group_id, account_role, strategy_user, strategy_agent, api_key, api_key_generated_at, api_enabled_override, status, balance, total_recharge, total_consume, invite_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)');
                 $stmt->execute([
                     $this->generateUid(),
@@ -241,7 +299,7 @@ final class AuthService
                     $qq,
                     $email ?: null,
                     $mobile ?: null,
-                    $avatar ?: ('https://q1.qlogo.cn/g?b=qq&nk=' . $qq . '&s=100'),
+                    $avatarValue,
                     password_hash($password, PASSWORD_DEFAULT),
                     $groupId,
                     $role,
@@ -262,14 +320,16 @@ final class AuthService
                 $this->pdo->commit();
                 Logger::write('info', 'user', '管理员创建用户', ['actor_id' => (int) $actor['id'], 'user_id' => $id, 'initial_balance' => $balance], (int) $actor['id']);
             } catch (\Throwable $e) {
-                if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
                 throw $e;
             }
         } else {
             $this->pdo->beginTransaction();
             try {
-                $sets = ['nickname = ?', 'qq = ?', 'email = ?', 'mobile = ?', 'avatar = ?', 'user_group_id = ?', 'strategy_user = ?', 'strategy_agent = ?', 'api_enabled_override = ?', 'status = ?', 'ban_until = ?', 'ban_reason = ?', 'updated_at = ?'];
-                $params = [$nickname, $qq, $email ?: null, $mobile ?: null, $avatar ?: null, $groupId, $strategyUser, $strategyAgent, $apiOverride, $status, $data['ban_until'] ?: null, $data['ban_reason'] ?: null, now()];
+                $sets = ['username = ?', 'nickname = ?', 'qq = ?', 'email = ?', 'mobile = ?', 'avatar = ?', 'user_group_id = ?', 'strategy_user = ?', 'strategy_agent = ?', 'api_enabled_override = ?', 'status = ?', 'ban_until = ?', 'ban_reason = ?', 'updated_at = ?'];
+                $params = [$username, $nickname, $qq, $email ?: null, $mobile ?: null, $avatarValue, $groupId, $strategyUser, $strategyAgent, $apiOverride, $status, $data['ban_until'] ?: null, $data['ban_reason'] ?: null, now()];
                 if ($strategyAgent === 0) {
                     $sets[] = 'api_key = ?';
                     $params[] = null;
@@ -285,7 +345,7 @@ final class AuthService
                         $params[] = now();
                     }
                 }
-                if ($actor['account_role'] === 'owner') {
+                if ($actor['account_role'] === 'owner' && (string) ($target['account_role'] ?? '') !== 'owner') {
                     $sets[] = 'account_role = ?';
                     $params[] = $role;
                 }
@@ -307,7 +367,9 @@ final class AuthService
                     $lock = $this->pdo->prepare('SELECT balance FROM users WHERE id = ? LIMIT 1 FOR UPDATE');
                     $lock->execute([$id]);
                     $currentBalance = $lock->fetchColumn();
-                    if ($currentBalance === false) throw new RuntimeException('用户不存在');
+                    if ($currentBalance === false) {
+                        throw new RuntimeException('用户不存在');
+                    }
                     $delta = $requestedBalance - (int) $currentBalance;
                     if ($delta !== 0) {
                         (new BalanceService())->adjust($id, $delta, 'admin_adjustment', '管理员调整用户余额', 'admin_adjustment', (string) $actor['id'] . ':' . $id);
@@ -316,7 +378,9 @@ final class AuthService
                 }
                 $this->pdo->commit();
             } catch (\Throwable $e) {
-                if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
                 throw $e;
             }
         }
@@ -326,8 +390,69 @@ final class AuthService
         return $this->sanitizeUser((array) $stmt->fetch());
     }
 
+    public function updateProfile(int $userId, array $data): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM users WHERE id = ? AND status <> ? LIMIT 1');
+        $stmt->execute([$userId, 'deleted']);
+        $user = $stmt->fetch();
+        if (!$user) {
+            throw new RuntimeException('用户不存在');
+        }
+
+        $nickname = trim((string) ($data['nickname'] ?? $user['nickname'] ?? ''));
+        $qq = trim((string) ($data['qq'] ?? $user['qq'] ?? ''));
+        $email = trim((string) ($data['email'] ?? $user['email'] ?? ''));
+        $mobile = trim((string) ($data['mobile'] ?? $user['mobile'] ?? ''));
+        if ($nickname === '' || mb_strlen($nickname) < 2 || mb_strlen($nickname) > 30) {
+            throw new RuntimeException('昵称长度需为2-30位');
+        }
+        if (!preg_match('/^[1-9][0-9]{4,14}$/', $qq)) {
+            throw new RuntimeException('QQ号格式不正确');
+        }
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('邮箱格式不正确');
+        }
+        if ($mobile !== '' && !preg_match('/^[0-9+\-\s]{6,30}$/', $mobile)) {
+            throw new RuntimeException('手机号格式不正确');
+        }
+
+        $avatarValue = $this->qqAvatarUrl($qq);
+        $this->pdo->prepare('UPDATE users SET nickname = ?, qq = ?, email = ?, mobile = ?, avatar = ?, updated_at = ? WHERE id = ?')
+            ->execute([$nickname, $qq, $email ?: null, $mobile ?: null, $avatarValue, now(), $userId]);
+
+        $stmt = $this->pdo->prepare('SELECT u.*, g.name AS group_name FROM users u LEFT JOIN user_groups g ON g.id = u.user_group_id WHERE u.id = ? LIMIT 1');
+        $stmt->execute([$userId]);
+        return $this->sanitizeUser((array) $stmt->fetch());
+    }
+
+    public function changePassword(int $userId, string $old, string $new): array
+    {
+        $old = (string) $old;
+        $new = (string) $new;
+        if (strlen($new) < 6) {
+            throw new RuntimeException('新密码至少6位');
+        }
+        $stmt = $this->pdo->prepare('SELECT password_hash FROM users WHERE id = ? AND status <> ? LIMIT 1');
+        $stmt->execute([$userId, 'deleted']);
+        $hash = $stmt->fetchColumn();
+        if (!$hash) {
+            throw new RuntimeException('用户不存在');
+        }
+        if (!password_verify($old, (string) $hash)) {
+            throw new RuntimeException('旧密码错误');
+        }
+        $this->pdo->prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?')
+            ->execute([password_hash($new, PASSWORD_DEFAULT), now(), $userId]);
+        return ['changed' => true];
+    }
+
     public function softDeleteUser(int $id): void
     {
+        $stmt = $this->pdo->prepare('SELECT account_role FROM users WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        if ((string) $stmt->fetchColumn() === 'owner') {
+            throw new RuntimeException('站长账号不允许删除');
+        }
         $stmt = $this->pdo->prepare('UPDATE users SET status = ?, deleted_at = ?, updated_at = ? WHERE id = ?');
         $stmt->execute(['deleted', now(), now(), $id]);
     }
@@ -373,6 +498,51 @@ final class AuthService
         return $uid;
     }
 
+    private function resolveConnectPolicyFlags(?string $policy, mixed $strategyUser, mixed $strategyAgent): array
+    {
+        $policy = $policy !== null ? strtolower(trim($policy)) : '';
+        if ($policy === 'agent') {
+            return ['strategy_user' => 0, 'strategy_agent' => 1, 'connect_policy' => 'agent'];
+        }
+        if ($policy === 'user') {
+            return ['strategy_user' => 1, 'strategy_agent' => 0, 'connect_policy' => 'user'];
+        }
+        if ($policy === 'default') {
+            return ['strategy_user' => 0, 'strategy_agent' => 0, 'connect_policy' => 'default'];
+        }
+
+        $agent = in_array((string) $strategyAgent, ['1', 'true', 'on'], true) ? 1 : (int) (!!$strategyAgent);
+        $user = in_array((string) $strategyUser, ['1', 'true', 'on'], true) ? 1 : (int) (!!$strategyUser);
+        if ($agent === 1) {
+            return ['strategy_user' => 0, 'strategy_agent' => 1, 'connect_policy' => 'agent'];
+        }
+        if ($user === 1) {
+            return ['strategy_user' => 1, 'strategy_agent' => 0, 'connect_policy' => 'user'];
+        }
+        return ['strategy_user' => 0, 'strategy_agent' => 0, 'connect_policy' => 'default'];
+    }
+
+    private function qqAvatarUrl(string $qq): string
+    {
+        return 'https://q1.qlogo.cn/g?b=qq&nk=' . rawurlencode($qq) . '&s=100';
+    }
+
+    private function assertUsernameAvailable(string $username, int $ignoreId = 0): void
+    {
+        $sql = 'SELECT id FROM users WHERE username = ?';
+        $params = [$username];
+        if ($ignoreId > 0) {
+            $sql .= ' AND id <> ?';
+            $params[] = $ignoreId;
+        }
+        $sql .= ' LIMIT 1';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        if ($stmt->fetchColumn()) {
+            throw new RuntimeException('用户名已存在');
+        }
+    }
+
     private function sanitizeUser(array $user): array
     {
         unset($user['password_hash']);
@@ -384,6 +554,13 @@ final class AuthService
         $user['invite_count'] = (int) ($user['invite_count'] ?? 0);
         $user['uid'] = (int) ($user['uid'] ?? 0);
         $user['id'] = (int) ($user['id'] ?? 0);
+        $user['connect_policy'] = $this->resolveConnectPolicyFlags(null, $user['strategy_user'], $user['strategy_agent'])['connect_policy'];
+        $user['role_label'] = match ((string) ($user['account_role'] ?? 'member')) {
+            'owner' => 'Owner',
+            'admin' => 'Admin',
+            'agent' => 'Agent',
+            default => 'User',
+        };
         return $user;
     }
 }
