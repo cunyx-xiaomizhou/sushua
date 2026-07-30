@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/src/bootstrap.php';
 
-use XiaoMiSlop\Core\Config;
-use XiaoMiSlop\Services\ProductService;
+use Sushua\Core\Config;
+use Sushua\Services\ProductService;
 
 if (PHP_SAPI !== 'cli') {
     fwrite(STDERR, "This script must be run from CLI.\n");

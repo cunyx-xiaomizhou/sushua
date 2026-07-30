@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Services;
+namespace Sushua\Services;
 
 final class PricingService
 {
@@ -40,7 +40,7 @@ final class PricingService
         if ($productId <= 0) {
             return 1.0;
         }
-        $pdo = \XiaoMiSlop\Core\Database::connection();
+        $pdo = \Sushua\Core\Database::connection();
         $stmt = $pdo->prepare('SELECT discount_rate FROM product_discounts WHERE product_id = ? AND active = 1 AND min_quantity <= ? ORDER BY min_quantity DESC LIMIT 1');
         $stmt->execute([$productId, $quantity]);
         $rate = $stmt->fetchColumn();

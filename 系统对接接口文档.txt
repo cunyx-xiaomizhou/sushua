@@ -1435,7 +1435,7 @@ paths:
       summary: 查询说说ID
       deprecated: false
       description: >-
-        仅支持查询空间说说的第一页，如果说说过于靠后无法在第一页获取到，可将需要说说先进行置顶后再查询。若有翻页需求，可使用[`小米粥科技API`](https://api.yzxmz.cn/)进行查询
+        仅支持查询空间说说的第一页，如果说说过于靠后无法在第一页获取到，可将需要说说先进行置顶后再查询。若有翻页需求，可使用[`粥粥科技API`](https://api.yzxmz.cn/)进行查询
       tags: []
       parameters:
         - name: uid
@@ -1542,14 +1542,14 @@ paths:
                     code: 200
                     msg: 接口调用成功
                     data:
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784884971
                         feed_id: f03faf8eeb2e636a036d0500
                         content: ''
                         img:
                           origin: []
                           proxy: []
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784879048
                         feed_id: f03faf8ec817636a80750a00
                         content: 这是我梦里想的样子
@@ -1560,14 +1560,14 @@ paths:
                           proxy:
                             - >-
                               https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqahphL73.8Vqxdgm5VNvgxl*6c45JbUEnnLEin7Zj0TgStsvoHhJaJTeLhJpg1A51IrAyeLG5R1bEyRVVBQgcVk!/o&ek=1&kp=1&pt=0&bo=OAQyBTgEMgUBACc!&tl=1&su=0177830610&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=17f3ca01ac6ca79443476864c216e769#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784806337
                         feed_id: f03faf8ec1fb616a27030300
                         content: ''
                         img:
                           origin: []
                           proxy: []
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784799883
                         feed_id: f03faf8e8be2616ad13c0a00
                         content: 我的闺蜜萌萌的
@@ -1578,14 +1578,14 @@ paths:
                           proxy:
                             - >-
                               https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqWSAZ.Qw7nS2TWhl0yhh07tM3cX2qPf7Rnz2NSXimU5A67ikEbTSe8fTpwbHfn7hPvqSnvxgrwTdccoZMUqcOSE!/o&ek=1&kp=1&pt=0&bo=0ALyAtAC8gIDACU!&tl=1&su=0232639522&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=921a9f118a6cb6096d76f7988463b4b7#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784677824
                         feed_id: f03faf8ec005606a10530900
                         content: ''
                         img:
                           origin: []
                           proxy: []
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784649632
                         feed_id: f03faf8ea0975f6a78260500
                         content: ''
@@ -1596,7 +1596,7 @@ paths:
                           proxy:
                             - >-
                               https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW32Oqxj/TmEUgtj9EK6.7V8ajmQrEE2NOftIKXzjvn*XjBW00z2ShW3N5GkjREjYVradG4uAGVlH1.Mwtx0wsV06Dn4CdP6fMsDr4bvQHWpbMXTTuW8!/o&ek=1&kp=1&pt=0&bo=NAM0AzQDNAMDEDU!&tl=1&su=091497167&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=752da2a0ee340df6bb16daeaf447ec39#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784643513
                         feed_id: f03faf8eb97f5f6abcbe0e00
                         content: |-
@@ -1621,14 +1621,14 @@ paths:
                               https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqYGMrzTYKBVYXVUYq91sSNCl573a3CNq1JzmIruR0mLGeenpHNaot8poSc7fCJPSgpBvdEpI7QYddiTGRjh9LyY!/o&ek=1&kp=1&pt=0&bo=QAZABkAGQAYBACc!&tl=1&su=076486338&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=15f496cddfeb0cdc0571213f9eaa9934#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
                             - >-
                               https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW3UNWVq/bqQfVz5yrrGYSXMvKr.cqYGMrzTYKBVYXVUYq91sSNAF94M9.t7VZ8a27KT44.MH.OSTvKMor1hwyT262OYRslrO.KlODQ01dmmokafLBiY!/o&ek=1&kp=1&pt=0&bo=gAc4BIAHOAQBACc!&tl=1&su=0173104034&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=08fc2b11b6cc5088a072c5269056a011#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784593342
                         feed_id: f03faf8ebebb5e6a47200900
                         content: ''
                         img:
                           origin: []
                           proxy: []
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784563210
                         feed_id: f03faf8e0a465e6a83f60300
                         content: ''
@@ -1639,7 +1639,7 @@ paths:
                           proxy:
                             - >-
                               https://qqzan.yzxmz.cn/utils/img_proxy?path=/psc?/V53qsFKu4EMQwt3BbaUL2lXGEW32Oqxj/TmEUgtj9EK6.7V8ajmQrEDdWE2*dfoLLEJLuMVnZxuDxUjCTRBmixWKdocogqj*yq1cuTG1PToiqkmst2XIjf*kccpff.fjBxvpwDx1UL7E!/o&ek=1&kp=1&pt=0&bo=NAM0AzQDNAMDEDU!&tl=1&su=049649551&vuin=2467303039&tm=1784894400&dis_t=1784896270&dis_k=9a7d5823063a49de03a25f512004214b#sce=30-0-0&rf=v1_ht5_qz_3.4.0_001_idc_b-311-0
-                      - nickname: 最好喝的小米粥
+                      - nickname: 最好喝的粥粥
                         ctime: 1784537096
                         feed_id: f03faf8e08e05d6a46810200
                         content: ''

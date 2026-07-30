@@ -8,7 +8,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo [INFO] XiaoMiSlop dev server is starting...
+echo [INFO] Sushua dev server is starting...
 echo [INFO] Listen: 0.0.0.0:3400
 echo [INFO] Local:  http://127.0.0.1:3400/
 echo [INFO] LAN:    http://SERVER-IP:3400/

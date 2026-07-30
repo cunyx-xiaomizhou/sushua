@@ -4,12 +4,12 @@
 -- 需要使用具备 CREATE DATABASE / 建表权限的账号执行。
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS `xiaomi_slop`
+CREATE DATABASE IF NOT EXISTS `sushua`
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
 
-USE `xiaomi_slop`;
+USE `sushua`;
 
 -- MySQL 命令行客户端支持 SOURCE；Workbench 中可直接打开并执行 schema.sql，
--- 或先在左侧 SCHEMAS 双击 xiaomi_slop，再执行 schema.sql。
+-- 或先在左侧 SCHEMAS 双击 sushua，再执行 schema.sql。
 SOURCE database/schema.sql;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/Support/helpers.php';
 
 spl_autoload_register(static function (string $class): void {
-    $prefix = 'XiaoMiSlop\\';
+    $prefix = 'Sushua\\';
     if (!str_starts_with($class, $prefix)) {
         return;
     }
@@ -15,8 +15,8 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
-\XiaoMiSlop\Core\Config::load();
-\XiaoMiSlop\Core\Session::start();
+\Sushua\Core\Config::load();
+\Sushua\Core\Session::start();
 
 $caBundle = curl_ca_bundle_path();
 if ($caBundle) {

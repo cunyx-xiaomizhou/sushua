@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Services;
+namespace Sushua\Services;
 
 use RuntimeException;
 
@@ -81,7 +81,7 @@ final class SmtpMailer
         $write($fp, base64_encode((string) $config['password']));
 
         $from = trim((string) ($config['from'] ?? $config['from_email'] ?? $config['username']));
-        $fromName = (string) ($config['from_name'] ?? 'XiaoMiSlop');
+        $fromName = (string) ($config['from_name'] ?? 'Sushua');
         $write($fp, 'MAIL FROM:<' . $from . '>');
         $write($fp, 'RCPT TO:<' . $to . '>');
         $write($fp, 'DATA');

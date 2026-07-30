@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Services;
+namespace Sushua\Services;
 
 final class ApiAccessService
 {

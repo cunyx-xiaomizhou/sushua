@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Services;
+namespace Sushua\Services;
 
 use PDO;
 use RuntimeException;
-use XiaoMiSlop\Core\Database;
+use Sushua\Core\Database;
 
 final class ProductService
 {

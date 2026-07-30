@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Core;
+namespace Sushua\Core;
 
 use PDO;
 use PDOException;

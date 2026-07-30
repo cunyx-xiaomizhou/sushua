@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Support;
+namespace Sushua\Support;
 
-use XiaoMiSlop\Core\Database;
+use Sushua\Core\Database;
 
 final class Logger
 {

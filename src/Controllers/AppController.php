@@ -1,26 +1,26 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Controllers;
+namespace Sushua\Controllers;
 
 use RuntimeException;
-use XiaoMiSlop\Core\Database;
-use XiaoMiSlop\Core\Request;
-use XiaoMiSlop\Core\Response;
-use XiaoMiSlop\Services\ApiAccessService;
-use XiaoMiSlop\Services\AuthService;
-use XiaoMiSlop\Services\BalanceService;
-use XiaoMiSlop\Services\CardService;
-use XiaoMiSlop\Services\CaptchaService;
-use XiaoMiSlop\Services\InviteService;
-use XiaoMiSlop\Services\OrderService;
-use XiaoMiSlop\Services\PaymentService;
-use XiaoMiSlop\Services\ProductExchangeCodeService;
-use XiaoMiSlop\Services\ProductService;
-use XiaoMiSlop\Services\SettingsService;
-use XiaoMiSlop\Services\UpstreamClient;
-use XiaoMiSlop\Services\UserGroupService;
-use XiaoMiSlop\Support\Logger;
+use Sushua\Core\Database;
+use Sushua\Core\Request;
+use Sushua\Core\Response;
+use Sushua\Services\ApiAccessService;
+use Sushua\Services\AuthService;
+use Sushua\Services\BalanceService;
+use Sushua\Services\CardService;
+use Sushua\Services\CaptchaService;
+use Sushua\Services\InviteService;
+use Sushua\Services\OrderService;
+use Sushua\Services\PaymentService;
+use Sushua\Services\ProductExchangeCodeService;
+use Sushua\Services\ProductService;
+use Sushua\Services\SettingsService;
+use Sushua\Services\UpstreamClient;
+use Sushua\Services\UserGroupService;
+use Sushua\Support\Logger;
 
 final class AppController
 {
@@ -61,7 +61,7 @@ final class AppController
     private function htmlShell(string $path): mixed
     {
         $user = $this->auth->currentUser();
-        $siteName = (string) $this->settings->get('site_name', '小米速刷系统');
+        $siteName = (string) $this->settings->get('site_name', '粥粥速刷系统');
         $siteKeywords = (string) $this->settings->get('site_keywords', '速刷,对接,短信,充值');
         $siteDescription = (string) $this->settings->get('site_description', '支持上游对接加价售卖的现代化速刷系统');
         $siteFavicon = trim((string) $this->settings->get('site_favicon', ''));
@@ -191,7 +191,7 @@ final class AppController
             $data[] = [
                 'name' => $row['name'], 'min' => $row['min_num'], 'max' => $row['max_num'], 'step' => $row['step_num'],
                 'steps' => $row['steps'], 'input' => $row['input'], 'desc' => $row['desc'], 'min_delayed' => $row['min_delayed'],
-                'price' => (new \XiaoMiSlop\Services\PricingService())->calculate($row, $this->group($user), max(1, $row['step_num']))['sell_price'],
+                'price' => (new \Sushua\Services\PricingService())->calculate($row, $this->group($user), max(1, $row['step_num']))['sell_price'],
                 'price_delayed' => $row['price_cost_delayed'], 'level' => $row['upstream_level'], 'sign' => $row['upstream_sign'],
             ];
         }
@@ -540,7 +540,7 @@ final class AppController
                 throw new RuntimeException('额度名称不能为空且不能超过20个字符');
             }
             if ($key === 'admin_path') {
-                $path = '/' . trim((string) $value, '/');
+                $path = '/' . trim((string) preg_replace('#/+#', '/', (string) $value), '/');
                 if ($path === '/' || !preg_match('#^/(?:[A-Za-z0-9_-]{1,40})(?:/[A-Za-z0-9_-]{1,40})*$#', $path)) {
                     throw new RuntimeException('后台路径格式不合法');
                 }
@@ -666,7 +666,6 @@ final class AppController
             'sms_provider',
             'community_group_qq',
             'support_group_qq',
-            'owner_feedback_group_qq',
             'icp_beian_no',
             'public_security_beian_no',
             'exchange_code_enabled',

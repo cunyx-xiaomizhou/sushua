@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Core;
+namespace Sushua\Core;
 
 final class Session
 {

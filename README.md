@@ -1,4 +1,4 @@
-# XiaoMiSlop 上游加价售卖系统
+# Sushua 上游加价售卖系统
 
 基于 **PHP 8.3 + MySQL 5.6+ + Vue 3** 的上游商品加价售卖/代理对接系统。系统内部所有余额、价格、充值和流水统一使用“额度”，不在业务页面显示其他货币单位。
 
@@ -72,6 +72,21 @@ start-dev.cmd
 ```powershell
 .\start-dev.ps1
 ```
+## Web 服务器路由
+
+首页、登录、注册、用户后台、管理后台和 API 都通过 `default.php` 统一分发。生产环境必须把不存在的文件或目录重写到该入口，否则 `/login`、`/register`、`/user` 等按钮会出现 404。
+
+- Apache：仓库根目录已提供 `.htaccess`，需要启用 `mod_rewrite` 并允许目录级重写（`AllowOverride All`）。
+- IIS：仓库根目录已提供 `web.config`，需要安装并启用 URL Rewrite 模块。
+- Nginx：在站点配置中加入：
+
+```nginx
+location / {
+    try_files $uri $uri/ /default.php?$query_string;
+}
+```
+
+PHP 内置服务器请继续使用 `php -S 0.0.0.0:3400 router.php`，不要直接省略 `router.php`。
 ## 安装
 
 1. 确保 `storage/` 可写。
@@ -84,9 +99,9 @@ SOURCE database/create_local_user.sql;
 
 该脚本会：
 
-- 创建数据库：`xiaomi_slop`
-- 创建本地专用账号：`xiaomi_slop`
-- 仅授权：`xiaomi_slop.*`
+- 创建数据库：`sushua`
+- 创建本地专用账号：`sushua`
+- 仅授权：`sushua.*`
 - 推荐安装连接参数：`127.0.0.1:3306`
 
 4. 启动开发服务器：
@@ -102,7 +117,7 @@ http://服务器IP:3400/install
 ```
 
 6. 安装向导依次完成：环境检查 → 数据库配置 → 站长账号配置。
-   - 安装器会使用数据库配置页填写的数据库名，不会强制切换到 `xiaomi_slop`。
+   - 安装器会使用数据库配置页填写的数据库名，不会强制切换到 `sushua`。
 7. 安装成功后会生成：
    - `storage/config.php`
    - `storage/install.lock`
@@ -115,15 +130,15 @@ http://服务器IP:3400/install
 
 推荐做法：
 
-1. 先用 root 执行 `database/create_local_user.sql`；该脚本最后会执行 `USE xiaomi_slop`。
-2. 在左侧 `SCHEMAS` 中双击 `xiaomi_slop`，让它变成默认数据库。
+1. 先用 root 执行 `database/create_local_user.sql`；该脚本最后会执行 `USE sushua`。
+2. 在左侧 `SCHEMAS` 中双击 `sushua`，让它变成默认数据库。
 3. 再执行 `database/schema.sql`。
 
 也可以先手动执行：
 
 ```sql
-CREATE DATABASE IF NOT EXISTS `xiaomi_slop` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `xiaomi_slop`;
+CREATE DATABASE IF NOT EXISTS `sushua` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `sushua`;
 ```
 
 MySQL 命令行可以使用辅助脚本：
@@ -139,9 +154,9 @@ SOURCE database/import_local.sql;
 ```text
 数据库主机：127.0.0.1
 数据库端口：3306
-数据库名：xiaomi_slop
-数据库用户名：xiaomi_slop
-数据库密码：xiaomi_slop123
+数据库名：sushua
+数据库用户名：sushua
+数据库密码：sushua123
 ```
 
 > 生产环境请务必改成你自己的强密码。
@@ -204,13 +219,13 @@ SOURCE database/import_local.sql;
 每 5 分钟同步商品：
 
 ```cron
-*/5 * * * * cd /path/to/XiaoMiSlop && /usr/bin/php scripts/sync_products.php >> storage/cron-products.log 2>&1
+*/5 * * * * cd /path/to/Sushua && /usr/bin/php scripts/sync_products.php >> storage/cron-products.log 2>&1
 ```
 
 每分钟同步处理中订单：
 
 ```cron
-* * * * * cd /path/to/XiaoMiSlop && /usr/bin/php scripts/sync_orders.php >> storage/cron-orders.log 2>&1
+* * * * * cd /path/to/Sushua && /usr/bin/php scripts/sync_orders.php >> storage/cron-orders.log 2>&1
 ```
 
 ### Windows 计划任务
@@ -224,8 +239,8 @@ C:\php\php.exe
 参数填写：
 
 ```text
-B:\Project Library\Project Software\XiaoMiSlop\scripts\sync_products.php
-B:\Project Library\Project Software\XiaoMiSlop\scripts\sync_orders.php
+B:\Project Library\Project Software\Sushua\scripts\sync_products.php
+B:\Project Library\Project Software\Sushua\scripts\sync_orders.php
 ```
 
 工作目录设置为项目根目录。脚本成功会输出 JSON；失败返回非 0 状态码。

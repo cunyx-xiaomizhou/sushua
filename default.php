@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/src/bootstrap.php';
 
-use XiaoMiSlop\Controllers\AppController;
-use XiaoMiSlop\Core\Config;
-use XiaoMiSlop\Core\Request;
-use XiaoMiSlop\Core\Response;
+use Sushua\Controllers\AppController;
+use Sushua\Core\Config;
+use Sushua\Core\Request;
+use Sushua\Core\Response;
 
 $path = request_path();
 if ($path === '/install' || str_starts_with($path, '/install/')) {

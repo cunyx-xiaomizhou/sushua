@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Services;
+namespace Sushua\Services;
 
 use PDO;
-use XiaoMiSlop\Core\Database;
+use Sushua\Core\Database;
 
 final class SettingsService
 {
@@ -18,7 +18,7 @@ final class SettingsService
     public function defaults(): array
     {
         return [
-            'site_name' => '小米速刷系统',
+            'site_name' => '粥粥速刷系统',
             'site_keywords' => '速刷,对接,短信,充值',
             'site_description' => '支持上游对接加价售卖的现代化速刷系统',
             'site_favicon' => '',

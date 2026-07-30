@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/src/bootstrap.php';
 
-use XiaoMiSlop\Core\Config;
-use XiaoMiSlop\Core\Response;
-use XiaoMiSlop\Services\SettingsService;
+use Sushua\Core\Config;
+use Sushua\Core\Response;
+use Sushua\Services\SettingsService;
 
 if (Config::isInstalled()) {
     Response::redirect('/');
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $config = [
                 'installed' => false,
                 'app' => [
-                    'name' => trim((string) ($_POST['site_name'] ?? '小米速刷系统')),
+                    'name' => trim((string) ($_POST['site_name'] ?? '粥粥速刷系统')),
                     'timezone' => 'Asia/Shanghai',
                     'debug' => true,
                 ],
@@ -108,7 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $account = trim((string) ($_POST['owner_username'] ?? ''));
             $password = (string) ($_POST['owner_password'] ?? '');
             $ownerQq = trim((string) ($_POST['owner_qq'] ?? ''));
-            $adminPath = '/' . trim((string) ($_POST['admin_path'] ?? 'admin'), '/');
+            $adminPathInput = trim((string) ($_POST['admin_path'] ?? '/admin'));
+            $adminPath = '/' . trim((string) preg_replace('#/+#', '/', $adminPathInput), '/');
 
             if (!preg_match('/^[A-Za-z0-9]{4,32}$/', $account)) {
                 throw new RuntimeException('站长账号只能使用4-32位英文数字');
@@ -119,15 +120,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!preg_match('/^[1-9][0-9]{4,14}$/', $ownerQq)) {
                 throw new RuntimeException('请填写有效的站长 QQ 号');
             }
-            if (!preg_match('#^/[A-Za-z0-9_-]{2,40}$#', $adminPath)) {
-                throw new RuntimeException('后台路径只能使用 2-40 位英文、数字、下划线或中划线');
+            if ($adminPath === '/' || !preg_match('#^/(?:[A-Za-z0-9_-]{1,40})(?:/[A-Za-z0-9_-]{1,40})*$#', $adminPath)) {
+                throw new RuntimeException('后台路径可包含多级目录，每段只能使用 1-40 位英文、数字、下划线或中划线');
             }
 
             $config['installed'] = true;
             file_put_contents(storage_path('config.php'), '<?php return ' . var_export($config, true) . ';');
             @unlink($pending);
-            \XiaoMiSlop\Core\Config::reset();
-            $pdo = \XiaoMiSlop\Core\Database::connection();
+            \Sushua\Core\Config::reset();
+            $pdo = \Sushua\Core\Database::connection();
             $now = date('Y-m-d H:i:s');
             $pdo->prepare('INSERT INTO user_groups (group_code,name,description,threshold_mode,threshold_value,markup_mode,markup_value,recharge_bonus_rate,allow_api_default,is_default_register,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
                 ->execute(['default', '普通用户', '默认注册用户组', 'none', 0, 'fixed', 0, 1, 0, 1, 0, $now, $now]);
@@ -154,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>安装 · 小米速刷系统</title>
+<title>安装 · 粥粥速刷系统</title>
 <style>
 :root{--bg:#f4f7fb;--ink:#132238;--muted:#63738a;--primary:#5b5cf0;--card:#fff}*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,"Microsoft Yahei",sans-serif;background:radial-gradient(circle at 20% 0,#e9e8ff,transparent 35%),var(--bg);color:var(--ink);min-height:100vh;display:grid;place-items:center;padding:24px}.wrap{width:min(1060px,100%);background:#ffffffd9;border:1px solid #e5eaf4;backdrop-filter:blur(18px);border-radius:28px;box-shadow:0 30px 60px rgba(24,37,71,.12);display:grid;grid-template-columns:300px 1fr;overflow:hidden}.side{padding:36px 30px;background:linear-gradient(180deg,#1d2450,#4c50d8 60%,#7d77ff);color:#fff}.side h1{margin:0 0 12px;font-size:34px}.side p{margin:0;color:#e7eaff;line-height:1.7}.steps{margin-top:28px;display:flex;flex-direction:column;gap:12px}.steps div{padding:14px 15px;border-radius:15px;background:#ffffff14;border:1px solid #ffffff18;display:flex;align-items:center;gap:12px}.steps .num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#ffffff24;font-weight:800}.steps .active{background:#fff;color:#24325b}.main{padding:34px 38px}.eyebrow{display:inline-flex;padding:6px 12px;border-radius:999px;background:#ecedff;color:#5455df;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.main h2{margin:18px 0 8px;font-size:30px}.muted{color:var(--muted)}.alert{padding:13px 15px;border-radius:12px;margin:20px 0;background:#fff4e5;color:#a65000}.success{background:#ecfdf3;color:#137a43}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.field{margin:14px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:7px}.field input{width:100%;padding:13px 14px;border:1px solid #dce2ed;border-radius:12px;font:inherit;outline:none}.field input:focus{border-color:var(--primary);box-shadow:0 0 0 4px #5b5cf018}.actions{display:flex;justify-content:space-between;gap:12px;margin-top:26px}.btn{border:0;border-radius:12px;padding:13px 18px;font-weight:700;cursor:pointer;background:#eef0f8;color:#26324a;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.btn.primary{background:var(--primary);color:#fff}.check{padding:18px;border:1px solid #e4e9f2;border-radius:16px;background:#fafbff;margin:22px 0}.check div{display:flex;justify-content:space-between;padding:7px 0}.ok{color:#168852}.bad{color:#b42318}.hint{font-size:13px;color:#63738a;line-height:1.7;margin-top:6px}@media(max-width:720px){.wrap{grid-template-columns:1fr}.side{padding:24px}.steps{display:none}.main{padding:28px}.grid{grid-template-columns:1fr}}
 </style>
@@ -162,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 <div class="wrap">
     <aside class="side">
-        <h1>小米速刷</h1>
+        <h1>粥粥速刷</h1>
         <p>安装上游对接、加价售卖与额度管理系统。</p>
         <div class="steps">
             <div class="<?= $step===1?'active':'' ?>"><span class="num">1</span>环境检查</div>
@@ -198,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="post">
                 <input type="hidden" name="step" value="2">
                 <div class="grid">
-                    <div class="field"><label>站点名称</label><input name="site_name" value="小米速刷系统" required></div>
+                    <div class="field"><label>站点名称</label><input name="site_name" value="粥粥速刷系统" required></div>
                     <div class="field"><label>数据库主机</label><input name="db_host" value="127.0.0.1" required></div>
                     <div class="field"><label>数据库端口</label><input name="db_port" value="3306" required></div>
                     <div class="field"><label>数据库名</label><input name="db_name" value="<?= htmlspecialchars((string) ($_POST['db_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="请输入数据库名" required></div>
@@ -210,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php elseif($step===3): ?>
             <form method="post">
                 <input type="hidden" name="step" value="3">
-                <div class="field"><label>后台路径</label><input name="admin_path" value="admin" pattern="[A-Za-z0-9_-]{2,40}" required></div>
+                <div class="field"><label>后台路径</label><input name="admin_path" value="/admin" pattern="/?[A-Za-z0-9_-]{1,40}(/[A-Za-z0-9_-]{1,40})*" placeholder="/admin 或 /admin/system" required></div>
                 <div class="grid">
                     <div class="field"><label>站长账号</label><input name="owner_username" pattern="[A-Za-z0-9]{4,32}" required></div>
                     <div class="field"><label>站长密码</label><input type="password" name="owner_password" minlength="8" required></div>

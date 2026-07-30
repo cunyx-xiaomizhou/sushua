@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Services;
+namespace Sushua\Services;
 
 use PDO;
 use RuntimeException;
-use XiaoMiSlop\Core\Database;
-use XiaoMiSlop\Support\Logger;
+use Sushua\Core\Database;
+use Sushua\Support\Logger;
 
 final class OrderService
 {

@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace XiaoMiSlop\Services;
+namespace Sushua\Services;
 
 use PDO;
 use RuntimeException;
-use XiaoMiSlop\Core\Database;
-use XiaoMiSlop\Core\Session;
-use XiaoMiSlop\Support\Logger;
+use Sushua\Core\Database;
+use Sushua\Core\Session;
+use Sushua\Support\Logger;
 
 final class AuthService
 {

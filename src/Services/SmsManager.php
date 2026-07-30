@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-namespace XiaoMiSlop\Services;
-use PDO; use RuntimeException; use XiaoMiSlop\Core\Database; use XiaoMiSlop\Services\Sms\AliyunProvider; use XiaoMiSlop\Services\Sms\CustomHttpProvider; use XiaoMiSlop\Services\Sms\ProviderInterface; use XiaoMiSlop\Services\Sms\TencentCloudProvider;
+namespace Sushua\Services;
+use PDO; use RuntimeException; use Sushua\Core\Database; use Sushua\Services\Sms\AliyunProvider; use Sushua\Services\Sms\CustomHttpProvider; use Sushua\Services\Sms\ProviderInterface; use Sushua\Services\Sms\TencentCloudProvider;
 final class SmsManager
 {
     private PDO $pdo; public function __construct() { $this->pdo = Database::connection(); }

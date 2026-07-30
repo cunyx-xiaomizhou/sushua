@@ -191,13 +191,6 @@ __SITE_FAVICON_TAG__
                 <button class="btn primary" @click="openGroup('support')">加入售后群</button>
               </div>
             </div>
-            <div class="landing-group-card">
-              <small class="muted">站长反馈群</small>
-              <div class="landing-group-code">{{ settings.owner_feedback_group_qq || '143805881' }}</div>
-              <div class="landing-group-actions">
-                <button class="btn primary" @click="openGroup('owner_feedback')">加入站长反馈群</button>
-              </div>
-            </div>
           </div>
           <div class="auth-footnote">如果当前设备无法直接拉起 QQ，可复制群号到 QQ 内搜索加入。</div>
         </div>
@@ -1537,6 +1530,14 @@ __SITE_FAVICON_TAG__
                   <div class="field"><label>用户交流群 QQ</label><input v-model.trim="settingsForm.community_group_qq" placeholder="例如 1081888821"></div>
                   <div class="field"><label>售后群 QQ</label><input v-model.trim="settingsForm.support_group_qq" placeholder="例如 1081888821"></div>
                   <div class="field"><label>站长反馈群 QQ</label><input v-model.trim="settingsForm.owner_feedback_group_qq" placeholder="例如 143805881"></div>
+                  <div class="field full">
+                    <label>系统站长交流群</label>
+                    <div class="inline-actions">
+                      <span class="code-inline">{{ settingsForm.owner_feedback_group_qq || '143805881' }}</span>
+                      <button type="button" class="btn ghost" @click="openGroup('owner_feedback')">加入站长交流群</button>
+                    </div>
+                    <div class="hint">仅管理后台可见，用于站长反馈系统问题。</div>
+                  </div>
                   <div class="field"><label>ICP备案号</label><input v-model.trim="settingsForm.icp_beian_no" placeholder="例如 粤ICP备12345678号"></div>
                   <div class="field"><label>网安备案号</label><input v-model.trim="settingsForm.public_security_beian_no" placeholder="例如 粤公网安备 44000000000000号"></div>
                   <div class="field full"><label>SEO 页脚</label><textarea v-model.trim="settingsForm.seo_footer"></textarea></div>
@@ -2440,7 +2441,7 @@ const app = Vue.createApp({
     openGroup: function (kind) {
       const groupMap = {
         support: this.settings.support_group_qq || '',
-        owner_feedback: this.settings.owner_feedback_group_qq || '143805881',
+        owner_feedback: (this.settingsForm && this.settingsForm.owner_feedback_group_qq) || '143805881',
         community: this.settings.community_group_qq || ''
       };
       const groupCode = String(groupMap[kind] || groupMap.community || '').trim();
