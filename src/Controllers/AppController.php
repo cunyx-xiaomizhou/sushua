@@ -430,7 +430,7 @@ final class AppController
                 $action === 'settings/save' => $this->saveSettings($data),
                 $action === 'upstream' && $request->method() === 'GET' => $pdo->query('SELECT id,name,base_url,upstream_uid,enabled,is_default,options_json,created_at,updated_at FROM upstream_accounts ORDER BY id DESC')->fetchAll(),
                 $action === 'upstream/save' => $this->saveUpstream($data),
-                $action === 'upstream/balance' => (new UpstreamClient())->getBalance(),
+                $action === 'upstream/balance' => $this->upstreamBalance(),
                 $action === 'logs' => $this->listLogs($data),
                 default => throw new RuntimeException('后台接口不存在'),
             };
@@ -439,6 +439,19 @@ final class AppController
             Logger::write('error', 'admin', $e->getMessage(), ['action' => $action]);
             return Response::error($e->getMessage(), 422);
         }
+    }
+
+    private function upstreamBalance(): array
+    {
+        $response = (new UpstreamClient())->getBalance();
+        $balance = UpstreamClient::extractBalance($response);
+        if ($balance === null) {
+            throw new RuntimeException('Upstream returned successfully, but no recognizable balance field was found');
+        }
+        return [
+            'balance' => $balance,
+            'response' => $response,
+        ];
     }
 
     private function dashboard(): array
@@ -452,17 +465,7 @@ final class AppController
         };
         $upstream = null;
         try {
-            $balanceResult = (new UpstreamClient())->getBalance();
-            $balanceData = $balanceResult['data'] ?? null;
-            if (is_array($balanceData)) {
-                $upstream = $balanceData['amount'] ?? $balanceData['balance'] ?? $balanceData['money'] ?? null;
-            } elseif (is_numeric($balanceData)) {
-                $upstream = $balanceData;
-            }
-            if ($upstream === null && isset($balanceResult['amount']) && is_numeric($balanceResult['amount'])) {
-                $upstream = $balanceResult['amount'];
-            }
-            $upstream = is_numeric($upstream) ? (int) $upstream : null;
+            $upstream = UpstreamClient::extractBalance((new UpstreamClient())->getBalance());
         } catch (\Throwable) {}
 
         return [
