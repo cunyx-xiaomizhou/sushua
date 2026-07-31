@@ -373,22 +373,13 @@ __SITE_FAVICON_TAG__
       <div class="home-hero-grid">
         <div class="panel">
           <div class="page-head">
-            <div>
-              <h2>商品兑换码兑换</h2>
-            </div>
-            <div class="inline-actions">
-              <button class="btn ghost" @click="loadExchangeOrders(true)">刷新最近兑换订单</button>
-            </div>
+            <div><h2>商品兑换码兑换</h2></div>
+            <div class="inline-actions"><button class="btn ghost" @click="loadExchangeOrders(true)">刷新历史订单</button></div>
           </div>
           <div class="form-grid">
-            <div class="field full">
-              <label>兑换码</label>
-              <input v-model.trim="exchangePublic.code" placeholder="请输入 48 位以上商品兑换码">
-            </div>
+            <div class="field full"><label>兑换码</label><input v-model.trim="exchangePublic.code" placeholder="请输入 48 位以上商品兑换码"></div>
           </div>
-          <div class="inline-actions">
-            <button class="btn primary" @click="previewExchangeCode">查询兑换码</button>
-          </div>
+          <div class="inline-actions"><button class="btn primary" @click="previewExchangeCode">查询兑换码</button></div>
           <div v-if="exchangePublic.preview" class="section-gap section-stack">
             <div class="order-summary-box">
               <h4>{{ exchangePublic.preview.product_name }}</h4>
@@ -398,55 +389,31 @@ __SITE_FAVICON_TAG__
                 <div class="subtle"><span>计价单位</span><strong>每 {{ exchangePublic.preview.step_num }} 数量</strong></div>
                 <div class="subtle"><span>创建时价格快照</span><strong>{{ money(exchangePublic.preview.price_snapshot) }} {{ currency }}</strong></div>
               </div>
-              <div v-if="exchangePublic.preview.product_desc && exchangePublic.preview.product_desc.length" class="desc-list section-gap">
-                <div class="desc-item" v-for="(desc,idx) in exchangePublic.preview.product_desc" :key="idx">{{ desc }}</div>
-              </div>
+              <div v-if="exchangePublic.preview.product_desc && exchangePublic.preview.product_desc.length" class="desc-list section-gap"><div class="desc-item" v-for="(desc,idx) in exchangePublic.preview.product_desc" :key="idx">{{ desc }}</div></div>
             </div>
             <div class="panel">
               <h3>填写兑换信息</h3>
               <div class="form-grid">
-                <div class="field full">
-                  <label>QQ号</label>
-                  <input v-model.trim="exchangePublic.form.qq" placeholder="请输入下单 QQ">
-                  <div class="qq-preview" v-if="exchangePublic.form.qq"><img :src="qqAvatar(exchangePublic.form.qq)" alt="qq"><div class="tiny">头像由 QQ 提供，用于辅助核对。</div></div>
-                </div>
-                <div v-for="field in exchangeInputFields" :key="field.key" class="field" :class="{full: field.key === 'feed_id'}">
-                  <label>{{ field.label }}</label>
-                  <input v-model.trim="exchangePublic.form.extra[field.key]" :placeholder="field.placeholder || ('请输入' + field.label)">
-                </div>
+                <div class="field full"><label>QQ号</label><input v-model.trim="exchangePublic.form.qq" placeholder="请输入下单 QQ"><div class="qq-preview" v-if="exchangePublic.form.qq"><img :src="qqAvatar(exchangePublic.form.qq)" alt="qq"><div class="tiny">头像由 QQ 提供，用于辅助核对。</div></div></div>
+                <div v-for="field in exchangeInputFields" :key="field.key" class="field" :class="{full: field.key === 'feed_id'}"><label>{{ field.label }}</label><input v-model.trim="exchangePublic.form.extra[field.key]" :placeholder="field.placeholder || ('请输入' + field.label)"></div>
               </div>
               <div class="auth-footnote">若商品需要 QQ 号、说说 ID 等参数，请由兑换者自行填写；兑换成功后会自动生成本系统订单号。</div>
-              <div class="inline-actions section-gap">
-                <button class="btn success" @click="redeemExchangeCode">确认兑换并下单</button>
-              </div>
+              <div class="inline-actions section-gap"><button class="btn success" @click="redeemExchangeCode">确认兑换并下单</button></div>
             </div>
           </div>
         </div>
-
         <div class="section-stack">
           <div class="panel">
-            <h3>最近兑换订单</h3>
-            <div v-if="!exchangePublic.orders.length" class="placeholder-card">当前浏览器还没有兑换记录，兑换成功后会自动出现在这里。</div>
-            <div v-else class="code-list">
-              <div v-for="order in exchangePublic.orders" :key="order.order_no" class="code-item">
-                <div style="min-width:0">
-                  <div class="mono text-break">{{ order.display_order_no || order.order_no }}</div>
-                  <div class="tiny">{{ order.product_name }} · {{ formatDate(order.created_at) }}</div>
-                </div>
-                <div class="inline-actions">
-                  <span class="badge" :class="badgeTone(order.state)">{{ order.state }}</span>
-                  <span class="badge info">{{ order.latest_message || '无备注' }}</span>
-                </div>
-              </div>
-            </div>
+            <h3>订单查单</h3>
+            <div class="search-row exchange-order-search"><input v-model.trim="exchangePublic.orderSearch" placeholder="输入本浏览器已兑换的订单号"><button class="btn primary" @click="queryExchangeOrder(exchangePublic.orderSearch)">查询进度</button></div>
+            <div v-if="exchangePublic.orderDetail" class="order-summary-box section-gap"><div class="action-row"><strong class="mono text-break">{{ exchangePublic.orderDetail.display_order_no || exchangePublic.orderDetail.order_no }}</strong><span class="badge" :class="badgeTone(exchangePublic.orderDetail.state)">{{ exchangePublic.orderDetail.state || '-' }}</span></div><div class="tiny">{{ exchangePublic.orderDetail.product_name || '-' }} · {{ formatDate(exchangePublic.orderDetail.created_at) }}</div><div class="pre-wrap section-gap">{{ exchangePublic.orderDetail.latest_message || exchangePublic.orderDetail.message || '无' }}</div></div>
           </div>
           <div class="panel">
-            <h3>说明</h3>
-            <div class="desc-list">
-              <div class="desc-item">在兑换前，请确定已经开启了相应权限</div>
-              <div class="desc-item">若商品需要额外参数，请按页面提示填写；系统会按上游商品输入项进行校验。</div>
-            </div>
+            <h3>历史兑换订单</h3>
+            <div v-if="!exchangePublic.orders.length" class="placeholder-card">当前浏览器还没有兑换记录，兑换成功后会自动出现在这里。</div>
+            <div v-else class="code-list"><div v-for="order in exchangePublic.orders" :key="order.order_no" class="code-item"><div style="min-width:0"><div class="mono text-break">{{ order.display_order_no || order.order_no }}</div><div class="tiny">{{ order.product_name || '-' }} · {{ formatDate(order.created_at) }}</div></div><div class="inline-actions"><span class="badge" :class="badgeTone(order.state)">{{ order.state || '-' }}</span><button class="btn sm ghost" @click="queryExchangeOrder(order.order_no)">查看进度</button></div></div></div>
           </div>
+          <div class="panel"><h3>说明</h3><div class="desc-list"><div class="desc-item">在兑换前，请确定已经开启了相应权限</div><div class="desc-item">若商品需要额外参数，请按页面提示填写；系统会按上游商品输入项进行校验。</div></div></div>
         </div>
       </div>
     </section>
@@ -744,69 +711,21 @@ __SITE_FAVICON_TAG__
             <div v-if="userState.exchangeSettings && !userState.exchangeSettings.enabled" class="tip-box">商品兑换码功能当前已关闭，请联系管理员。</div>
             <div class="grid-2">
               <div class="panel">
-                <h3>生成兑换码</h3>
+                <h3>批量生成兑换码</h3>
                 <div class="form-grid">
-                  <div class="field full">
-                    <label>选择商品</label>
-                    <select v-model="exchangeCodeForm.sign" @change="exchangeCodeForm.quantity = selectedExchangeProduct ? Number(selectedExchangeProduct.min_num || selectedExchangeProduct.step_num || 1) : 0">
-                      <option value="">请选择商品</option>
-                      <option v-for="product in userState.products" :key="product.upstream_sign" :value="product.upstream_sign">{{ product.name }}</option>
-                    </select>
-                  </div>
-                  <div v-if="selectedExchangeProduct" class="field full">
-                    <label>商品说明</label>
-                    <div class="order-summary-box">
-                      <div class="tiny">当前用户价格</div>
-                      <strong>{{ money(selectedExchangeProduct.sell_price || selectedExchangeProduct.price || 0) }} {{ currency }} / {{ selectedExchangeProduct.step_num || 1 }} 个</strong>
-                      <div v-if="selectedExchangeProduct.desc && selectedExchangeProduct.desc.length" class="desc-list section-gap">
-                        <div v-for="(desc,idx) in selectedExchangeProduct.desc" :key="idx" class="desc-item">{{ desc }}</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="field">
-                    <label>兑换码包含数量</label>
-                    <input v-model.number="exchangeCodeForm.quantity" type="number" min="1" :max="selectedExchangeProduct ? selectedExchangeProduct.max_num : null" :step="selectedExchangeProduct ? (selectedExchangeProduct.step_num || 1) : 1">
-                  </div>
-                  <div class="field">
-                    <label>生成手续费</label>
-                    <input :value="money(userState.exchangeSettings ? userState.exchangeSettings.generation_fee : 0) + ' ' + currency" readonly>
-                  </div>
+                  <div class="field full"><label>选择商品</label><select v-model="exchangeCodeForm.sign" @change="exchangeCodeForm.quantity = selectedExchangeProduct ? Number(selectedExchangeProduct.min_num || selectedExchangeProduct.step_num || 1) : 0"><option value="">请选择商品</option><option v-for="product in userState.products" :key="product.upstream_sign" :value="product.upstream_sign">{{ product.name }}</option></select></div>
+                  <div class="field"><label>每个兑换码的下单数量</label><input v-model.number="exchangeCodeForm.quantity" type="number" min="1" :max="selectedExchangeProduct ? selectedExchangeProduct.max_num : null" :step="selectedExchangeProduct ? (selectedExchangeProduct.step_num || 1) : 1"></div>
+                  <div class="field"><label>生成数量</label><input v-model.number="exchangeCodeForm.count" type="number" min="1" max="1000"></div>
+                  <div class="field"><label>生成手续费（每张）</label><input :value="money(userState.exchangeSettings ? userState.exchangeSettings.generation_fee : 0) + ' ' + currency" readonly></div>
                 </div>
-                <div class="admin-note section-gap" v-if="userState.exchangeSettings">
-                  <div>兑换码格式：<span class="code-inline">{{ userState.exchangeSettings.format }}</span></div>
-                  <div class="tiny">{{ userState.exchangeSettings.format_help }}</div>
-                </div>
-                <div class="inline-actions section-gap">
-                  <button class="btn primary" @click="createExchangeCode" :disabled="!selectedExchangeProduct || !exchangeCodeForm.quantity">生成商品兑换码</button>
-                </div>
+                <div v-if="selectedExchangeProduct" class="order-summary-box section-gap"><div class="tiny">当前用户价格</div><strong>{{ money(selectedExchangeProduct.sell_price || selectedExchangeProduct.price || 0) }} {{ currency }} / {{ selectedExchangeProduct.step_num || 1 }} 个</strong><div v-if="selectedExchangeProduct.desc && selectedExchangeProduct.desc.length" class="desc-list section-gap"><div v-for="(desc,idx) in selectedExchangeProduct.desc" :key="idx" class="desc-item">{{ desc }}</div></div></div>
+                <div class="admin-note section-gap" v-if="userState.exchangeSettings"><div>兑换码格式：<span class="code-inline">{{ userState.exchangeSettings.format }}</span></div><div class="tiny">{{ userState.exchangeSettings.format_help }}</div></div>
+                <div class="inline-actions section-gap"><button class="btn primary" @click="createExchangeCode" :disabled="!selectedExchangeProduct || !exchangeCodeForm.quantity || !exchangeCodeForm.count">批量生成兑换码</button></div>
+                <div v-if="exchangeCodeForm.generatedCodes.length" class="section-gap"><div class="action-row"><strong>本次生成的兑换码</strong><button class="btn sm ghost" @click="copyGeneratedExchangeCodes">一键复制全部</button></div><textarea class="code-output" readonly :value="exchangeCodeForm.generatedCodes.join('\n')"></textarea></div>
               </div>
-              <div class="panel">
-                <h3>使用说明</h3>
-                <div class="desc-list">
-                  <div class="desc-item">生成兑换码只收取后台设置的生成手续费；兑换后订单费用按兑换码创建时的商品价格快照从生成者账户扣除。</div>
-                  <div class="desc-item">兑换码长度至少 48 位，支持系统前缀、随机字符串和用户 UID 组合。</div>
-                  <div class="desc-item">兑换者打开 <a :href="exchangePageUrl" target="_blank" rel="noopener">{{ exchangePageUrl }}</a> 即可兑换</div>
-                </div>
-              </div>
+              <div class="panel"><h3>使用说明</h3><div class="desc-list"><div class="desc-item">兑换者打开 <a :href="exchangePageUrl" target="_blank" rel="noopener">{{ exchangePageUrl }}</a> 即可兑换</div><div class="desc-item">生成兑换码只收取后台设置的生成手续费；兑换后订单费用按兑换码创建时的商品价格快照从生成者账户扣除。</div><div class="desc-item">兑换码长度至少 48 位，支持系统前缀、随机字符串和用户 UID 组合。</div></div></div>
             </div>
-            <div class="panel section-gap">
-              <div class="action-row"><h3>我的兑换码</h3><span class="tiny">仅展示脱敏兑换码，完整内容请在生成成功提示时及时保存。</span></div>
-              <div v-if="!userState.exchangeCodes.length" class="empty">暂无兑换码。</div>
-              <div v-else class="code-list">
-                <div v-for="row in userState.exchangeCodes" :key="row.id" class="code-item">
-                  <div>
-                    <strong class="mono text-break">{{ row.display_code }}</strong>
-                    <div class="tiny">{{ row.product_name_snapshot }} · {{ row.quantity }} 个 · {{ formatDate(row.created_at) }}</div>
-                  </div>
-                  <div class="inline-actions">
-                    <span class="badge" :class="row.status === 'used' ? 'success' : 'info'">{{ row.status === 'used' ? '已兑换' : '未使用' }}</span>
-                    <span v-if="row.redeemer_order_no" class="tiny mono">订单 {{ row.redeemer_order_no }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
+            <div class="panel section-gap"><div class="action-row"><h3>我的兑换码</h3><span class="tiny">展示完整兑换码；已使用或已销毁的兑换码不可再次编辑。</span></div><div v-if="!userState.exchangeCodes.length" class="empty">暂无兑换码。</div><div v-else class="code-list"><div v-for="row in userState.exchangeCodes" :key="row.id" class="code-item"><div style="min-width:0"><strong class="mono text-break">{{ row.code || row.display_code }}</strong><div class="tiny">{{ row.product_name_snapshot }} · {{ row.quantity }} 个 · {{ formatDate(row.created_at) }}<span v-if="row.redeemer_qq"> · 兑换者QQ {{ row.redeemer_qq }}</span></div></div><div class="inline-actions"><span class="badge" :class="row.status === 'used' ? 'success' : (row.status === 'destroyed' ? 'danger' : 'info')">{{ row.status === 'used' ? '已兑换' : (row.status === 'destroyed' ? '已销毁' : '未使用') }}</span><button v-if="row.status === 'unused'" class="btn sm ghost" @click="editExchangeCode(row)">编辑</button><button v-if="row.status === 'unused'" class="btn sm danger" @click="destroyExchangeCode(row)">销毁</button></div></div></div></div>
           <div v-else-if="userTab === 'recharge'">
             <div class="page-head">
               <div>
@@ -1730,29 +1649,10 @@ __SITE_FAVICON_TAG__
           </div>
 
           <div v-else-if="adminTab === 'exchange-list'">
-            <div class="page-head">
-              <div><h2>商品兑换码列表</h2><p>查看兑换码创建者、商品快照、使用状态和对应订单。</p></div>
-              <div class="inline-actions"><button class="btn ghost" @click="loadAdminExchangeCodes(true)">刷新列表</button></div>
-            </div>
-            <div class="table-wrap" v-if="adminState.exchange.codes.length">
-              <table class="table">
-                <thead><tr><th>兑换码</th><th>创建用户</th><th>商品 / 数量</th><th>价格 / 服务费</th><th>状态</th><th>订单</th><th>时间</th></tr></thead>
-                <tbody>
-                  <tr v-for="row in adminState.exchange.codes" :key="row.id">
-                    <td><div class="mono text-break exchange-code-cell">{{ row.display_code || row.code }}</div><div class="tiny">内部ID #{{ row.id }}</div></td>
-                    <td>{{ row.creator_nickname || row.creator_username || row.creator_name_snapshot || '-' }}<div class="tiny">内部用户ID {{ row.creator_user_id }} · UID快照 {{ row.creator_uid_snapshot }}</div></td>
-                    <td>{{ row.product_name_snapshot }}<div class="tiny">{{ row.quantity }} 个 / 每 {{ row.step_num_snapshot }} 个计价</div></td>
-                    <td>{{ money(row.price_snapshot) }}<div class="amount-yuan">{{ yuanApprox(row.price_snapshot) }}</div><div class="tiny">生成费 {{ money(row.generation_fee) }} · {{ yuanApprox(row.generation_fee) }}</div></td>
-                    <td><span class="badge" :class="row.status === 'used' ? 'success' : 'info'">{{ row.status === 'used' ? '已兑换' : '未使用' }}</span></td>
-                    <td><span class="mono">{{ row.redeemer_order_no || '-' }}</span><div class="tiny" v-if="row.order_state">{{ row.order_state }} · {{ row.order_message || '无' }}</div></td>
-                    <td>{{ formatDate(row.created_at) }}<div class="tiny" v-if="row.used_at">使用：{{ formatDate(row.used_at) }}</div></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div v-else class="placeholder-card">暂无商品兑换码。</div>
+            <div class="page-head"><div><h2>商品兑换码列表</h2><p>支持按商品、状态、兑换者 QQ 和时间排序，兑换码不脱敏。</p></div><div class="inline-actions"><button class="btn ghost" @click="loadAdminExchangeCodes(true)">刷新列表</button></div></div>
+            <div class="filter-grid exchange-filters"><select v-model="adminState.exchange.filters.product_id"><option value="">全部商品</option><option v-for="product in adminState.products" :key="product.id" :value="product.id">{{ product.name }}</option></select><select v-model="adminState.exchange.filters.status"><option value="">全部状态</option><option value="unused">未使用</option><option value="used">已兑换</option><option value="destroyed">已销毁</option></select><input v-model.trim="adminState.exchange.filters.redeemer_qq" placeholder="兑换者QQ"><select v-model="adminState.exchange.filters.sort"><option value="created_desc">生成时间倒序</option><option value="created_asc">生成时间正序</option><option value="used_desc">使用时间倒序</option><option value="used_asc">使用时间正序</option></select><button class="btn ghost" @click="loadAdminExchangeCodes(true)">筛选</button></div>
+            <div class="table-wrap" v-if="adminState.exchange.codes.length"><table class="table"><thead><tr><th>兑换码</th><th>创建用户</th><th>商品 / 数量</th><th>价格 / 服务费</th><th>状态</th><th>兑换者QQ / 订单</th><th>生成/使用时间</th><th>操作</th></tr></thead><tbody><tr v-for="row in adminState.exchange.codes" :key="row.id"><td><div class="mono text-break exchange-code-cell">{{ row.code || row.display_code }}</div><div class="tiny">内部ID #{{ row.id }}</div></td><td>{{ row.creator_nickname || row.creator_username || row.creator_name_snapshot || '-' }}<div class="tiny">用户ID {{ row.creator_user_id }} · UID {{ row.creator_uid_snapshot }}</div></td><td>{{ row.product_name_snapshot }}<div class="tiny">{{ row.quantity }} 个 / 每 {{ row.step_num_snapshot }} 个计价</div></td><td>{{ money(row.price_snapshot) }}<div class="amount-yuan">{{ yuanApprox(row.price_snapshot) }}</div><div class="tiny">生成费 {{ money(row.generation_fee) }} · {{ yuanApprox(row.generation_fee) }}</div></td><td><span class="badge" :class="row.status === 'used' ? 'success' : (row.status === 'destroyed' ? 'danger' : 'info')">{{ row.status === 'used' ? '已兑换' : (row.status === 'destroyed' ? '已销毁' : '未使用') }}</span></td><td>{{ row.redeemer_qq || '-' }}<div class="tiny mono">{{ row.redeemer_order_no || '-' }}</div></td><td>生成：{{ formatDate(row.created_at) }}<div class="tiny" v-if="row.used_at">使用：{{ formatDate(row.used_at) }}</div></td><td><div class="inline-actions"><button v-if="row.status === 'unused'" class="btn sm ghost" @click="editExchangeCode(row, true)">编辑</button><button v-if="row.status === 'unused'" class="btn sm danger" @click="destroyExchangeCode(row, true)">销毁</button></div></td></tr></tbody></table></div><div v-else class="placeholder-card">暂无商品兑换码。</div>
           </div>
-
           <div v-else-if="adminTab === 'exchange-logs'">
             <div class="page-head">
               <div><h2>商品兑换码日志</h2><p>用于定位生成、兑换和异常操作，反馈问题时可提供日志编号。</p></div>
@@ -1809,6 +1709,10 @@ __SITE_FAVICON_TAG__
     </div>
     __SEO_FOOTER_BLOCK__
   </footer>
+
+  <div v-if="exchangeEditState.visible" class="modal-mask" @click.self="closeExchangeEdit">
+    <div class="modal" style="max-width:680px"><div class="modal-head"><div><h3>编辑商品兑换码</h3><div class="tiny">仅未使用兑换码可编辑。</div></div><button class="btn ghost" @click="closeExchangeEdit">关闭</button></div><div class="modal-body-scroll"><div class="form-grid"><div class="field full"><label>兑换码（至少48位）</label><input v-model.trim="exchangeEditState.form.code"></div><div class="field full"><label>商品</label><select v-model="exchangeEditState.form.sign"><option v-for="product in (exchangeEditState.admin ? adminState.products : userState.products)" :key="product.id || product.upstream_sign" :value="product.upstream_sign">{{ product.name }}</option></select></div><div class="field"><label>下单数量</label><input v-model.number="exchangeEditState.form.quantity" type="number" min="1"></div></div></div><div class="inline-actions section-gap" style="justify-content:flex-end"><button class="btn ghost" @click="closeExchangeEdit">取消</button><button class="btn primary" @click="saveExchangeCode">保存修改</button></div></div>
+  </div>
 
   <div v-if="confirmState.visible" class="modal-mask" @click.self="cancelConfirm">
     <div class="modal" style="max-width:560px">
@@ -2107,8 +2011,9 @@ const app = Vue.createApp({
         exchangeCodes: [], exchangeSettings: null
       },
       orderForm: { sign: '', qq: (BOOT.user && BOOT.user.qq) ? BOOT.user.qq : '', num: 0, feed_id: '', is_delayed: false, extra: {} },
-      exchangeCodeForm: { sign: '', quantity: 0 },
-      exchangePublic: { code: '', preview: null, form: { qq: '', extra: {} }, orders: [] },
+      exchangeCodeForm: { sign: '', quantity: 0, count: 1, generatedCodes: [] },
+      exchangePublic: { code: '', preview: null, form: { qq: '', extra: {} }, orders: [], orderSearch: '', orderDetail: null },
+      exchangeEditState: { visible: false, admin: false, form: { id: 0, code: '', sign: '', quantity: 0 } },
       quote: null,
       rechargeForm: emptyRechargeForm(),
       cardRedeemCode: '',
@@ -2118,7 +2023,7 @@ const app = Vue.createApp({
       adminState: {
         dashboard: null, products: [], groups: [], users: [], userKeyword: '', orders: [], upstream: [], upstreamBalance: null, upstreamBalanceError: '', cards: [],
         payments: { merchants: [], channels: [], recharge_orders: [] }, settingsRaw: {}, scheduledTasks: { system_key: '', products_endpoint: '', orders_endpoint: '' }, logs: [], logLevel: '', logChannel: '',
-        exchange: { codes: [], logs: [] }
+        exchange: { codes: [], logs: [], filters: { product_id: '', status: '', redeemer_qq: '', sort: 'created_desc' } }
       },
       groupForm: emptyGroupForm(),
       userForm: emptyUserForm(),
@@ -2436,7 +2341,7 @@ const app = Vue.createApp({
       return raw.time || raw.created_at || '-';
     },
     exchangeActionText: function (action) {
-      return ({ create: '生成兑换码', redeem: '兑换并下单' })[String(action || '')] || String(action || '未知操作');
+      return ({ create: '生成兑换码', redeem: '兑换并下单', update: '编辑兑换码', destroy: '销毁兑换码' })[String(action || '')] || String(action || '未知操作');
     },
     maskExchangeCode: function (code) {
       const text = String(code || '');
@@ -2969,26 +2874,36 @@ const app = Vue.createApp({
       return rows;
     },
     async createExchangeCode() {
-      if (!this.exchangeCodeForm.sign) {
-        this.notify('请先选择商品', 'warning');
-        return;
-      }
-      const payload = { sign: this.exchangeCodeForm.sign, quantity: Number(this.exchangeCodeForm.quantity || 0) };
-      const row = await this.fetchJson('/user/api/exchange-code/create', { method: 'POST', body: payload, loadingText: '正在生成商品兑换码...' });
-      const fullCode = row.code || row.display_code || '';
-      if (fullCode) {
-        try {
-          await navigator.clipboard.writeText(fullCode);
-          this.notify('兑换码生成成功，完整兑换码已复制到剪贴板', 'success');
-        } catch (e) {
-          this.notify('兑换码生成成功：' + fullCode, 'success');
-        }
-      } else {
-        this.notify('兑换码生成成功', 'success');
-      }
-      this.exchangeCodeForm.quantity = this.selectedExchangeProduct ? Number(this.selectedExchangeProduct.min_num || this.selectedExchangeProduct.step_num || 1) : 0;
-      await this.loadUserExchangeCodes(true);
-      await this.loadUserProfile(true);
+      if (!this.exchangeCodeForm.sign) { this.notify('请先选择商品', 'warning'); return; }
+      const count = Math.min(1000, Math.max(1, Number(this.exchangeCodeForm.count || 1)));
+      const payload = { sign: this.exchangeCodeForm.sign, quantity: Number(this.exchangeCodeForm.quantity || 0), count: count };
+      const data = await this.fetchJson('/user/api/exchange-code/create', { method: 'POST', body: payload, loadingText: '正在批量生成商品兑换码...' });
+      const rows = Array.isArray(data.codes) ? data.codes : [];
+      this.exchangeCodeForm.generatedCodes = rows.map(function (row) { return row.code || row.display_code || ''; }).filter(Boolean);
+      this.notify('已生成 ' + this.exchangeCodeForm.generatedCodes.length + ' 个兑换码', 'success');
+      await this.loadUserExchangeCodes(true); await this.loadUserProfile(true);
+    },
+    async copyGeneratedExchangeCodes() {
+      const text = this.exchangeCodeForm.generatedCodes.join('\n');
+      if (!text) return;
+      try { await navigator.clipboard.writeText(text); this.notify('已复制全部兑换码', 'success'); } catch (e) { this.notify('复制失败，请手动复制文本框内容', 'warning'); }
+    },
+    editExchangeCode: function (row, admin) {
+      this.exchangeEditState = { visible: true, admin: !!admin, form: { id: Number(row.id), code: row.code || row.display_code || '', sign: row.product_sign_snapshot || '', quantity: Number(row.quantity || 0) } };
+    },
+    closeExchangeEdit: function () { this.exchangeEditState.visible = false; },
+    async saveExchangeCode() {
+      const state = this.exchangeEditState; if (!state.form.code || state.form.code.length < 48) { this.notify('兑换码长度不能少于48位', 'warning'); return; }
+      const url = state.admin ? this.adminUrl + '/api/exchange-code/save' : '/user/api/exchange-code/save';
+      await this.fetchJson(url, { method: 'POST', body: state.form, loadingText: '正在保存兑换码...' });
+      this.notify('兑换码已保存', 'success'); this.closeExchangeEdit();
+      if (state.admin) await this.loadAdminExchangeCodes(true); else await this.loadUserExchangeCodes(true);
+    },
+    async destroyExchangeCode(row, admin) {
+      if (!await this.confirmAction('销毁后该兑换码将不可兑换，且已保留审计记录，确认继续吗？', { title: '销毁兑换码', confirmText: '确认销毁' })) return;
+      const url = admin ? this.adminUrl + '/api/exchange-code/destroy' : '/user/api/exchange-code/destroy';
+      await this.fetchJson(url, { method: 'POST', body: { id: Number(row.id) }, loadingText: '正在销毁兑换码...' });
+      this.notify('兑换码已销毁', 'success'); if (admin) await this.loadAdminExchangeCodes(true); else await this.loadUserExchangeCodes(true);
     },
     async previewExchangeCode() {
       if (!this.exchangePublic.code) {
@@ -3020,9 +2935,17 @@ const app = Vue.createApp({
       return order;
     },
     async loadExchangeOrders(force) {
-      const rows = await this.fetchJson('/exchange/api/orders', { method: 'GET', loadingText: '正在加载最近兑换订单...', silent: !force });
+      const rows = await this.fetchJson('/exchange/api/orders', { method: 'GET', loadingText: '正在加载历史兑换订单...', silent: !force });
       this.exchangePublic.orders = rows || [];
       return rows;
+    },
+    async queryExchangeOrder(orderNo) {
+      const value = String(orderNo || '').trim(); if (!value) { this.notify('请输入订单号', 'warning'); return; }
+      const row = await this.fetchJson(this.withQuery('/exchange/api/order', { order_no: value }), { method: 'GET', loadingText: '正在查询订单进度...' });
+      this.exchangePublic.orderSearch = value; this.exchangePublic.orderDetail = row;
+      const index = this.exchangePublic.orders.findIndex(function (item) { return String(item.order_no) === value; });
+      if (index >= 0) this.exchangePublic.orders.splice(index, 1, row);
+      return row;
     },
     async loadUserInvites(force) {
       const data = await this.fetchJson('/user/api/invites', { method: 'GET', loadingText: '正在加载邀请码...', silent: !force });
@@ -3111,7 +3034,7 @@ const app = Vue.createApp({
         'payments-merchants': () => this.loadAdminRecharge(force),
         'payments-channels': () => this.loadAdminRecharge(force),
         'exchange-rules': () => this.loadAdminSettings(force),
-        'exchange-list': () => this.loadAdminExchangeCodes(force),
+        'exchange-list': async () => { await this.loadAdminProducts(force); await this.loadAdminExchangeCodes(force); },
         'exchange-logs': () => this.loadAdminExchangeLogs(force),
         'settings-basic': () => this.loadAdminSettings(force),
         'settings-theme': () => this.loadAdminSettings(force),
@@ -3445,7 +3368,7 @@ const app = Vue.createApp({
       await this.loadAdminSettings(true);
     },
     async loadAdminExchangeCodes(force) {
-      const rows = await this.fetchJson(this.adminUrl + '/api/exchange-codes', { method: 'GET', loadingText: '正在加载兑换码列表...', silent: !force });
+      const rows = await this.fetchJson(this.withQuery(this.adminUrl + '/api/exchange-codes', this.adminState.exchange.filters), { method: 'GET', loadingText: '正在加载兑换码列表...', silent: !force });
       this.adminState.exchange.codes = rows || [];
       return rows;
     },

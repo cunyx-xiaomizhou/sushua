@@ -58,6 +58,7 @@ final class AppController
         if ($path === '/exchange/api/preview' && $request->method() === 'POST') return $this->exchangePreview($request);
         if ($path === '/exchange/api/redeem' && $request->method() === 'POST') return $this->exchangeRedeem($request);
         if ($path === '/exchange/api/orders' && $request->method() === 'GET') return $this->exchangeOrders();
+        if ($path === '/exchange/api/order' && $request->method() === 'GET') return $this->exchangeOrder($request);
         return $this->htmlShell($path);
     }
 
@@ -363,8 +364,10 @@ final class AppController
                 $action === 'recharge/orders' => $this->userRechargeOrders($user),
                 $action === 'invites' => (new InviteService())->list((int) $user['id']),
                 $action === 'invite/create' && $request->method() === 'POST' => (new InviteService())->create((int) $user['id'], (int) ($data['length'] ?? 20), trim((string) ($data['code'] ?? '')) ?: null, false),
-                $action === 'exchange-codes' && $request->method() === 'GET' => (new ProductExchangeCodeService())->listForUser((int) $user['id']),
-                $action === 'exchange-code/create' && $request->method() === 'POST' => (new ProductExchangeCodeService())->create($user, $data),
+                $action === 'exchange-codes' && $request->method() === 'GET' => (new ProductExchangeCodeService())->listForUser((int) $user['id'], $data),
+                $action === 'exchange-code/create' && $request->method() === 'POST' => ['codes' => (new ProductExchangeCodeService())->createBatch($user, $data, (int) ($data['count'] ?? 1)), 'count' => min(1000, max(1, (int) ($data['count'] ?? 1)))],
+                $action === 'exchange-code/save' && $request->method() === 'POST' => (new ProductExchangeCodeService())->save($user, $data, false),
+                $action === 'exchange-code/destroy' && $request->method() === 'POST' => (new ProductExchangeCodeService())->destroy($user, (int) ($data['id'] ?? 0), false),
                 $action === 'exchange-code/settings' && $request->method() === 'GET' => (new ProductExchangeCodeService())->settingsSummary(),
                 default => throw new RuntimeException('用户接口不存在'),
             };
@@ -464,7 +467,9 @@ final class AppController
                 $action === 'users/delete' => (new AuthService())->softDeleteUser($admin, (int) ($data['id'] ?? 0)),
                 $action === 'users/reset-key' => ['api_key' => (new AuthService())->resetApiKey((int) ($data['id'] ?? 0))],
                 $action === 'orders' => (new OrderService())->list($admin, true),
-                $action === 'exchange-codes' && $request->method() === 'GET' => (new ProductExchangeCodeService())->listForAdmin(),
+                $action === 'exchange-codes' && $request->method() === 'GET' => (new ProductExchangeCodeService())->listForAdmin($data),
+                $action === 'exchange-code/save' && $request->method() === 'POST' => (new ProductExchangeCodeService())->save($admin, $data, true),
+                $action === 'exchange-code/destroy' && $request->method() === 'POST' => (new ProductExchangeCodeService())->destroy($admin, (int) ($data['id'] ?? 0), true),
                 $action === 'exchange-codes/logs' && $request->method() === 'GET' => (new ProductExchangeCodeService())->listLogs(),
                 $action === 'orders/sync' => (new OrderService())->syncPendingOrders(),
                 $action === 'orders/retry' => (new OrderService())->retry($admin, (int) ($data['id'] ?? 0), true),
@@ -976,6 +981,21 @@ final class AppController
         }
     }
 
+    private function exchangeOrder(Request $request): mixed
+    {
+        try {
+            $orderNo = trim((string) $request->input('order_no', ''));
+            if ($orderNo === '') throw new RuntimeException('请输入订单号');
+            $allowed = $this->exchangeOrderCookieList();
+            if (!in_array($orderNo, $allowed, true)) throw new RuntimeException('当前浏览器没有此兑换订单记录');
+            $rows = (new ProductExchangeCodeService())->publicOrders([$orderNo]);
+            if (!$rows) throw new RuntimeException('兑换订单不存在');
+            return Response::success($rows[0], '操作成功');
+        } catch (\Throwable $e) {
+            return Response::error($e->getMessage(), 422);
+        }
+    }
+
     private function rememberExchangeOrder(string $orderNo): void
     {
         $orderNo = trim($orderNo);
@@ -985,7 +1005,7 @@ final class AppController
         $list = $this->exchangeOrderCookieList();
         array_unshift($list, $orderNo);
         $list = array_values(array_unique(array_filter(array_map('trim', $list))));
-        $list = array_slice($list, 0, 20);
+        $list = array_slice($list, 0, 100);
         $days = min(3650, max(7, (int) $this->settings->get('exchange_code_cookie_days', '60')));
         setcookie('xm_exchange_orders', json_encode($list, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), [
             'expires' => time() + ($days * 86400),
@@ -999,7 +1019,16 @@ final class AppController
 
     private function exchangeOrderCookieList(): array
     {
-        return array_values(array_filter(json_array((string) ($_COOKIE['xm_exchange_orders'] ?? '[]'))));
+        $raw = (string) ($_COOKIE['xm_exchange_orders'] ?? '[]');
+        $decoded = json_array($raw, []);
+        if (!$decoded && str_contains($raw, '%')) $decoded = json_array(rawurldecode($raw), []);
+        $list = [];
+        foreach ($decoded as $orderNo) {
+            if (!is_scalar($orderNo)) continue;
+            $orderNo = trim((string) $orderNo);
+            if ($orderNo !== '' && strlen($orderNo) <= 80) $list[] = $orderNo;
+        }
+        return array_slice(array_values(array_unique($list)), 0, 100);
     }
 
     private function themeConfig(): array

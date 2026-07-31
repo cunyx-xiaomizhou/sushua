@@ -46,86 +46,96 @@ final class ProductExchangeCodeService
 
     public function create(array $user, array $data): array
     {
+        $rows = $this->createBatch($user, $data, 1);
+        return $rows[0];
+    }
+
+    public function createBatch(array $user, array $data, int $count = 1): array
+    {
         $settings = $this->settingsSummary();
         if (!$settings['enabled']) {
             throw new RuntimeException('商品兑换码功能当前已关闭');
         }
-
+        $count = min(1000, max(1, $count));
         $product = $this->resolveProduct($data);
         $quantity = (int) ($data['quantity'] ?? $data['num'] ?? 0);
-        if ($quantity < (int) $product['min_num'] || $quantity > (int) $product['max_num']) {
-            throw new RuntimeException('兑换码数量不在商品允许范围内');
-        }
-        if ($quantity % max(1, (int) $product['step_num']) !== 0) {
-            throw new RuntimeException('兑换码数量必须为商品步长整数倍');
-        }
-
+        $this->validateQuantity($product, $quantity);
         $group = $this->findGroup((int) $user['user_group_id']);
         $pricing = $this->pricing->calculate($product, $group, $quantity, false);
-        $code = $this->buildUniqueCode($user);
-        $payload = [
-            'product_input' => (array) ($product['input'] ?? []),
-            'product_desc' => (array) ($product['desc'] ?? []),
-            'generated_by' => [
-                'user_id' => (int) ($user['id'] ?? 0),
-                'uid' => (int) ($user['uid'] ?? 0),
-                'username' => (string) ($user['username'] ?? ''),
-                'nickname' => (string) ($user['nickname'] ?? ''),
-            ],
-        ];
-
+        $codes = [];
         $this->pdo->beginTransaction();
         try {
             $stmt = $this->pdo->prepare('INSERT INTO product_exchange_codes (code, creator_user_id, creator_uid_snapshot, creator_name_snapshot, product_id, product_sign_snapshot, product_name_snapshot, quantity, step_num_snapshot, price_snapshot, generation_fee, status, extra_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $stmt->execute([
-                $code,
-                (int) $user['id'],
-                (int) ($user['uid'] ?? 0),
-                (string) ($user['nickname'] ?: ($user['username'] ?? '')),
-                (int) $product['id'],
-                (string) $product['upstream_sign'],
-                (string) $product['name'],
-                $quantity,
-                (int) $product['step_num'],
-                (int) $pricing['sell_price'],
-                (int) $settings['generation_fee'],
-                'unused',
-                json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                now(),
-                now(),
-            ]);
-            $id = (int) $this->pdo->lastInsertId();
-            if ((int) $settings['generation_fee'] > 0) {
-                (new BalanceService())->adjust((int) $user['id'], -(int) $settings['generation_fee'], 'exchange_code_generation_fee', '生成商品兑换码服务费', 'exchange_code', $code);
+            for ($i = 0; $i < $count; $i++) {
+                $code = $this->buildUniqueCode($user, isset($data['code']) && $count === 1 ? (string) $data['code'] : '');
+                $payload = [
+                    'product_input' => (array) ($product['input'] ?? []),
+                    'product_desc' => (array) ($product['desc'] ?? []),
+                    'generated_by' => [
+                        'user_id' => (int) ($user['id'] ?? 0),
+                        'uid' => (int) ($user['uid'] ?? 0),
+                        'username' => (string) ($user['username'] ?? ''),
+                        'nickname' => (string) ($user['nickname'] ?? ''),
+                    ],
+                ];
+                $now = now();
+                $stmt->execute([
+                    $code,
+                    (int) $user['id'],
+                    (int) ($user['uid'] ?? 0),
+                    (string) ($user['nickname'] ?: ($user['username'] ?? '')),
+                    (int) $product['id'],
+                    (string) $product['upstream_sign'],
+                    (string) $product['name'],
+                    $quantity,
+                    (int) $product['step_num'],
+                    (int) $pricing['sell_price'],
+                    (int) $settings['generation_fee'],
+                    'unused',
+                    json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    $now,
+                    $now,
+                ]);
+                $id = (int) $this->pdo->lastInsertId();
+                if ((int) $settings['generation_fee'] > 0) {
+                    (new BalanceService())->adjust((int) $user['id'], -(int) $settings['generation_fee'], 'exchange_code_generation_fee', '生成商品兑换码服务费', 'exchange_code', $code);
+                }
+                $this->log($id, 'create', (int) $user['id'], null, [
+                    'product_id' => (int) $product['id'],
+                    'product_name' => (string) $product['name'],
+                    'quantity' => $quantity,
+                    'price_snapshot' => (int) $pricing['sell_price'],
+                    'generation_fee' => (int) $settings['generation_fee'],
+                ]);
+                $codes[] = $id;
             }
-            $this->log($id, 'create', (int) $user['id'], null, [
-                'product_id' => (int) $product['id'],
-                'product_name' => (string) $product['name'],
-                'quantity' => $quantity,
-                'price_snapshot' => (int) $pricing['sell_price'],
-                'generation_fee' => (int) $settings['generation_fee'],
-            ]);
             $this->pdo->commit();
-            return $this->getById($id, false);
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
             throw $e;
         }
+        return array_map(fn (int $id): array => $this->getById($id, false), $codes);
     }
 
-    public function listForUser(int $userId): array
+    public function listForUser(int $userId, array $filters = []): array
     {
-        $stmt = $this->pdo->prepare('SELECT ec.*, o.state AS order_state, o.message AS order_message FROM product_exchange_codes ec LEFT JOIN orders o ON o.id = ec.redeemer_order_id WHERE ec.creator_user_id = ? ORDER BY ec.id DESC LIMIT 200');
-        $stmt->execute([$userId]);
+        [$where, $params, $order] = $this->listQuery($filters, 'ec.creator_user_id = ?');
+        array_unshift($params, $userId);
+        $sql = 'SELECT ec.*, o.state AS order_state, o.message AS order_message, o.target_qq AS redeemer_qq FROM product_exchange_codes ec LEFT JOIN orders o ON o.id = ec.redeemer_order_id WHERE ' . $where . ' ORDER BY ' . $order . ' LIMIT 500';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         return array_map(fn (array $row): array => $this->normalize($row, false), $stmt->fetchAll());
     }
 
-    public function listForAdmin(): array
+    public function listForAdmin(array $filters = []): array
     {
-        $sql = 'SELECT ec.*, cu.username AS creator_username, cu.nickname AS creator_nickname, ru.username AS redeemer_username, ru.nickname AS redeemer_nickname, o.state AS order_state, o.message AS order_message FROM product_exchange_codes ec LEFT JOIN users cu ON cu.id = ec.creator_user_id LEFT JOIN users ru ON ru.id = ec.redeemer_user_id LEFT JOIN orders o ON o.id = ec.redeemer_order_id ORDER BY ec.id DESC LIMIT 400';
-        return array_map(fn (array $row): array => $this->normalize($row, true), $this->pdo->query($sql)->fetchAll());
+        [$where, $params, $order] = $this->listQuery($filters, '1 = 1');
+        $sql = 'SELECT ec.*, cu.username AS creator_username, cu.nickname AS creator_nickname, ru.username AS redeemer_username, ru.nickname AS redeemer_nickname, o.state AS order_state, o.message AS order_message, o.target_qq AS redeemer_qq FROM product_exchange_codes ec LEFT JOIN users cu ON cu.id = ec.creator_user_id LEFT JOIN users ru ON ru.id = ec.redeemer_user_id LEFT JOIN orders o ON o.id = ec.redeemer_order_id WHERE ' . $where . ' ORDER BY ' . $order . ' LIMIT 1000';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return array_map(fn (array $row): array => $this->normalize($row, true), $stmt->fetchAll());
     }
 
     public function listLogs(): array
@@ -266,6 +276,78 @@ final class ProductExchangeCodeService
         return $this->normalize($row, $admin);
     }
 
+    public function save(array $operator, array $data, bool $admin = false): array
+    {
+        $id = (int) ($data['id'] ?? 0);
+        if ($id <= 0) throw new RuntimeException('兑换码参数无效');
+        $stmt = $this->pdo->prepare('SELECT * FROM product_exchange_codes WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        if (!$row) throw new RuntimeException('兑换码不存在');
+        if (!$admin && (int) $row['creator_user_id'] !== (int) ($operator['id'] ?? 0)) throw new RuntimeException('无权编辑此兑换码');
+        if ((string) $row['status'] !== 'unused') throw new RuntimeException('已使用或已销毁的兑换码不可编辑');
+        $product = $this->resolveProduct($data);
+        $quantity = (int) ($data['quantity'] ?? $row['quantity']);
+        $this->validateQuantity($product, $quantity);
+        if ($admin) {
+            $creator = $this->loadCreator((int) $row['creator_user_id']);
+            $group = $this->findGroup((int) $creator['user_group_id']);
+        } else {
+            $group = $this->findGroup((int) ($operator['user_group_id'] ?? 0));
+        }
+        $pricing = $this->pricing->calculate($product, $group, $quantity, false);
+        $code = trim((string) ($data['code'] ?? $row['code']));
+        $this->validateCode($code, $id);
+        $this->pdo->prepare('UPDATE product_exchange_codes SET code = ?, product_id = ?, product_sign_snapshot = ?, product_name_snapshot = ?, quantity = ?, step_num_snapshot = ?, price_snapshot = ?, updated_at = ? WHERE id = ?')->execute([
+            $code, (int) $product['id'], (string) $product['upstream_sign'], (string) $product['name'], $quantity, (int) $product['step_num'], (int) $pricing['sell_price'], now(), $id
+        ]);
+        $this->log($id, 'update', (int) ($operator['id'] ?? 0), null, ['product_id' => (int) $product['id'], 'quantity' => $quantity]);
+        return $this->getById($id, $admin);
+    }
+
+    public function destroy(array $operator, int $id, bool $admin = false): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM product_exchange_codes WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        if (!$row) throw new RuntimeException('兑换码不存在');
+        if (!$admin && (int) $row['creator_user_id'] !== (int) ($operator['id'] ?? 0)) throw new RuntimeException('无权销毁此兑换码');
+        if ((string) $row['status'] !== 'unused') throw new RuntimeException('已使用或已销毁的兑换码不可销毁');
+        $this->pdo->prepare('UPDATE product_exchange_codes SET status = ?, updated_at = ? WHERE id = ?')->execute(['destroyed', now(), $id]);
+        $this->log($id, 'destroy', (int) ($operator['id'] ?? 0), null, []);
+        return $this->getById($id, $admin);
+    }
+
+    private function validateQuantity(array $product, int $quantity): void
+    {
+        if ($quantity < (int) $product['min_num'] || $quantity > (int) $product['max_num']) throw new RuntimeException('兑换码数量不在商品允许范围内');
+        if ($quantity % max(1, (int) $product['step_num']) !== 0) throw new RuntimeException('兑换码数量必须为商品步长整数倍');
+    }
+
+    private function validateCode(string $code, int $exceptId = 0): void
+    {
+        if ($code === '' || strlen($code) < 48) throw new RuntimeException('兑换码长度不能少于48位');
+        $sql = 'SELECT id FROM product_exchange_codes WHERE code = ?' . ($exceptId > 0 ? ' AND id <> ?' : '') . ' LIMIT 1';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($exceptId > 0 ? [$code, $exceptId] : [$code]);
+        if ($stmt->fetchColumn()) throw new RuntimeException('兑换码已存在');
+    }
+
+    private function listQuery(array $filters, string $base): array
+    {
+        $where = [$base]; $params = [];
+        if (($productId = (int) ($filters['product_id'] ?? 0)) > 0) { $where[] = 'ec.product_id = ?'; $params[] = $productId; }
+        if (($status = trim((string) ($filters['status'] ?? ''))) !== '' && in_array($status, ['unused', 'used', 'destroyed'], true)) { $where[] = 'ec.status = ?'; $params[] = $status; }
+        if (($qq = trim((string) ($filters['redeemer_qq'] ?? $filters['qq'] ?? ''))) !== '') { $where[] = 'o.target_qq LIKE ?'; $params[] = '%' . $qq . '%'; }
+        $orderBy = 'ec.id'; $direction = 'DESC';
+        $sort = (string) ($filters['sort'] ?? 'created_desc');
+        if ($sort === 'created_asc') { $orderBy = 'ec.created_at'; $direction = 'ASC'; }
+        elseif ($sort === 'used_asc') { $orderBy = 'ec.used_at'; $direction = 'ASC'; }
+        elseif ($sort === 'used_desc') { $orderBy = 'ec.used_at'; $direction = 'DESC'; }
+        elseif ($sort === 'created_desc') { $orderBy = 'ec.created_at'; $direction = 'DESC'; }
+        return [implode(' AND ', $where), $params, $orderBy . ' ' . $direction . ', ec.id DESC'];
+    }
+
     private function resolveProduct(array $data): array
     {
         if (!empty($data['product_id'])) {
@@ -317,8 +399,12 @@ final class ProductExchangeCodeService
         return $row ?: null;
     }
 
-    private function buildUniqueCode(array $user): string
+    private function buildUniqueCode(array $user, string $customCode = ''): string
     {
+        if ($customCode !== '') {
+            $this->validateCode($customCode);
+            return $customCode;
+        }
         for ($i = 0; $i < 8; $i++) {
             $code = $this->renderCodeTemplate($user);
             $stmt = $this->pdo->prepare('SELECT id FROM product_exchange_codes WHERE code = ? LIMIT 1');
@@ -369,7 +455,8 @@ final class ProductExchangeCodeService
         $row['redeemer_user_id'] = $row['redeemer_user_id'] === null ? null : (int) $row['redeemer_user_id'];
         $row['redeemer_order_id'] = $row['redeemer_order_id'] === null ? null : (int) $row['redeemer_order_id'];
         $row['extra'] = json_array($row['extra_json'] ?? '[]');
-        $row['display_code'] = $admin ? (string) ($row['code'] ?? '') : $this->maskCode((string) ($row['code'] ?? ''));
+        $row['display_code'] = (string) ($row['code'] ?? '');
+        $row['redeemer_qq'] = (string) ($row['redeemer_qq'] ?? '');
         return $row;
     }
 
