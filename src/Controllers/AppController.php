@@ -102,7 +102,7 @@ final class AppController
                 'logo' => $siteLogo,
                 'footer' => $seoFooter,
             ],
-            'settings' => $this->publicSettings(),
+            'settings' => $this->publicSettings($user),
             'theme' => $this->themeConfig(),
         ];
 
@@ -459,7 +459,7 @@ final class AppController
                 $action === 'products' && $request->method() === 'GET' => (new ProductService())->adminList(),
                 $action === 'products/sync' => (new ProductService())->syncFromUpstream(),
                 $action === 'products/save' => (new ProductService())->saveProduct($data),
-                $action === 'groups' && $request->method() === 'GET' => (new UserGroupService())->all(),
+                $action === 'groups' && $request->method() === 'GET' => (new UserGroupService())->all(true),
                 $action === 'groups/save' => (new UserGroupService())->save($data),
                 $action === 'groups/default' => (new UserGroupService())->setDefault((int) ($data['id'] ?? 0)),
                 $action === 'users' => (new AuthService())->listUsers($data),
@@ -724,7 +724,7 @@ final class AppController
         return 'home';
     }
 
-    private function publicSettings(): array
+    private function publicSettings(?array $user = null): array
     {
         $all = $this->settings->all();
         $keys = [
@@ -763,6 +763,11 @@ final class AppController
         $public['invite_code_price_rules'] = $this->normalizeInviteCodePriceRules(
             json_array((string) ($all['invite_code_price_rules'] ?? ''), ['mode' => 'fixed', 'fixed' => 0, 'length_rules' => []])
         );
+        $canShowSupportGroup = $user !== null && (int) ($user['total_recharge'] ?? 0) > 0;
+        $public['can_show_support_group'] = $canShowSupportGroup;
+        if (!$canShowSupportGroup) {
+            $public['support_group_qq'] = null;
+        }
         $public['theme_config'] = $this->themeConfig();
         return $public;
     }
@@ -1040,6 +1045,7 @@ final class AppController
 
     private function homeStats(): array
     {
+        (new ProductService())->ensureSchema();
         $pdo = Database::connection();
         $summary = [
             'product_count' => (int) ($pdo->query('SELECT COUNT(*) FROM products WHERE enabled = 1')->fetchColumn() ?: 0),
@@ -1048,11 +1054,11 @@ final class AppController
             'items' => [],
         ];
 
-        $sql = 'SELECT p.id, p.name, COUNT(o.id) AS order_count, COALESCE(SUM(o.quantity),0) AS total_quantity, ' .
+        $sql = 'SELECT p.id, p.name, p.sort_order, COUNT(o.id) AS order_count, COALESCE(SUM(o.quantity),0) AS total_quantity, ' .
             'COALESCE(SUM(CASE WHEN o.started_at IS NOT NULL AND o.finished_at IS NOT NULL AND o.finished_at > o.started_at THEN TIMESTAMPDIFF(SECOND, o.started_at, o.finished_at) ELSE 0 END),0) AS total_seconds ' .
             'FROM products p JOIN orders o ON o.product_id = p.id ' .
-            'GROUP BY p.id, p.name HAVING COUNT(o.id) > 0 ' .
-            'ORDER BY total_quantity DESC, order_count DESC, p.id DESC LIMIT 24';
+            'GROUP BY p.id, p.name, p.sort_order HAVING COUNT(o.id) > 0 ' .
+            'ORDER BY p.sort_order ASC, total_quantity DESC, order_count DESC, p.id ASC LIMIT 24';
         foreach ($pdo->query($sql)->fetchAll() as $row) {
             $seconds = (int) ($row['total_seconds'] ?? 0);
             $hours = $seconds > 0 ? ($seconds / 3600) : 0;

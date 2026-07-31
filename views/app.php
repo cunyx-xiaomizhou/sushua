@@ -174,7 +174,7 @@ __SITE_FAVICON_TAG__
         <div class="panel">
           <div class="page-head" style="margin-bottom:0">
             <div>
-              <h2>交流群与售后群</h2>
+              <h2>{{ canShowSupportGroup ? '交流群与售后群' : '用户交流群' }}</h2>
               <p>群号可在后台实时配置。若你在 QQ 内打开，将优先尝试调起 QQ 群名片。</p>
             </div>
           </div>
@@ -186,7 +186,7 @@ __SITE_FAVICON_TAG__
                 <button class="btn primary" @click="openGroup('community')">加入用户交流群</button>
               </div>
             </div>
-            <div class="landing-group-card">
+            <div v-if="canShowSupportGroup" class="landing-group-card">
               <small class="muted">售后 / 支持群</small>
               <div class="landing-group-code">{{ settings.support_group_qq || '未配置' }}</div>
               <div class="landing-group-actions">
@@ -494,6 +494,15 @@ __SITE_FAVICON_TAG__
                   <button class="quick-card" @click="switchUserTab('groups')"><h3>代理等级</h3></button>
                   <button class="quick-card" @click="switchUserTab('profile')"><h3>个人资料</h3></button>
                 </div>
+              </div>
+            </div>
+            <div v-if="canShowSupportGroup" class="panel section-gap">
+              <div class="card-title">
+                <div>
+                  <h3>售后 / 支持群</h3>
+                  <div class="landing-group-code">{{ settings.support_group_qq }}</div>
+                </div>
+                <button class="btn primary" @click="openGroup('support')">加入售后群</button>
               </div>
             </div>
           </div>
@@ -1117,6 +1126,7 @@ __SITE_FAVICON_TAG__
                   <div class="subtle"><span>前台下单</span><label><input type="checkbox" v-model="product.allow_frontend_bool"> 允许</label></div>
                   <div class="subtle"><span>允许对接</span><label><input type="checkbox" v-model="product.allow_api_bool"> 允许</label></div>
                   <div class="subtle"><span>商品状态</span><label><input type="checkbox" v-model="product.enabled_bool"> 启用</label></div>
+                  <div class="subtle"><span>排序优先级</span><input v-model.number="product.sort_order" type="number" style="max-width:130px"><span class="tiny">数字越小越靠前</span></div>
                   <div class="subtle"><span>范围</span><strong>{{ product.min_num }} - {{ product.max_num }} / 步长 {{ product.step_num }}</strong></div>
                 </div>
                 <div class="section-gap">
@@ -1159,6 +1169,24 @@ __SITE_FAVICON_TAG__
                   <div class="field"><label>排序权重</label><input v-model.number="groupForm.sort_order" type="number"></div>
                   <div class="field"><label>余额不足时可降级</label><select v-model.number="groupForm.downgrade_on_balance"><option :value="0">否</option><option :value="1">是</option></select></div>
                   <div class="field"><label>默认允许对接</label><select v-model.number="groupForm.allow_api_default"><option :value="0">否</option><option :value="1">是</option></select></div>
+                </div>
+                <div class="section-gap">
+                  <h4>商品固定价格</h4>
+                  <p class="panel-sub">固定价格按商品计价单位填写，将替代本用户组的加价规则；未填写的商品继续按上方加价规则计算，商品数量折扣仍会生效。</p>
+                  <div v-if="!adminState.products.length" class="placeholder-card" style="padding:14px">暂无商品，请先同步商品数据。</div>
+                  <div v-else class="editor-list">
+                    <div class="code-item" v-for="product in adminState.products" :key="product.id">
+                      <div>
+                        <strong>{{ product.name }}</strong>
+                        <div class="tiny">每 {{ product.step_num }} 数量为一个计价单位 · 上游成本 {{ money(product.price_cost) }} {{ currency }}</div>
+                      </div>
+                      <div class="field">
+                        <label>固定价格（留空则跟随加价）</label>
+                        <input v-model="groupForm.product_prices[String(product.id)]" type="number" min="0" step="1" placeholder="留空">
+                        <div v-if="groupForm.product_prices[String(product.id)] !== '' && groupForm.product_prices[String(product.id)] != null" class="amount-yuan">{{ yuanApprox(groupForm.product_prices[String(product.id)]) }}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div class="inline-actions">
                   <button class="btn primary" @click="saveGroup">保存用户组</button>
@@ -1816,7 +1844,7 @@ function emptyInviteForm() {
   return { length: 20, code: '' };
 }
 function emptyGroupForm() {
-  return { id: 0, group_code: '', name: '', description: '', threshold_mode: 'none', threshold_value: 0, downgrade_on_balance: 0, markup_mode: 'fixed', markup_value: 0, recharge_bonus_rate: 1, allow_api_default: 0, sort_order: 0 };
+  return { id: 0, group_code: '', name: '', description: '', threshold_mode: 'none', threshold_value: 0, downgrade_on_balance: 0, markup_mode: 'fixed', markup_value: 0, recharge_bonus_rate: 1, allow_api_default: 0, sort_order: 0, product_prices: {} };
 }
 function emptyUserForm() {
   return { id: 0, username: '', nickname: '', qq: '', email: '', mobile: '', password: '', balance: 0, user_group_id: 0, status: 'active', account_role: 'member', connect_policy: 'default', created_at: '', last_login_at: '', last_login_ip: '', invite_count: 0 };
@@ -1999,6 +2027,7 @@ function normalizeAdminProduct(product) {
   product.allow_frontend_bool = boolish(product.allow_frontend);
   product.allow_api_bool = boolish(product.allow_api);
   product.enabled_bool = boolish(product.enabled);
+  product.sort_order = Number(product.sort_order || 0);
   product.discounts = Array.isArray(product.discounts) ? product.discounts.map(function (item) {
     return { min_quantity: Number(item.min_quantity || 1), discount_rate: Number(item.discount_rate || 1) };
   }) : [];
@@ -2083,6 +2112,9 @@ const app = Vue.createApp({
     },
     isOwner: function () {
       return !!this.user && String(this.user.account_role || '') === 'owner';
+    },
+    canShowSupportGroup: function () {
+      return boolish(this.settings.can_show_support_group) && String(this.settings.support_group_qq || '').trim() !== '';
     },
     userLoginNeedCaptcha: function () {
       return true;
@@ -3049,7 +3081,7 @@ const app = Vue.createApp({
         dashboard: () => this.loadAdminDashboard(force),
         'products-sync': () => this.loadAdminProducts(force),
         'products-list': () => this.loadAdminProducts(force),
-        'groups-list': () => this.loadAdminGroups(force),
+        'groups-list': async () => { await Promise.all([this.loadAdminGroups(force), this.loadAdminProducts(force)]); },
         'groups-default': () => this.loadAdminGroups(force),
         'users-list': () => this.loadAdminUsers(force),
         'users-create': async () => { await this.loadAdminUsers(force); await this.loadAdminGroups(force); },
@@ -3114,6 +3146,7 @@ const app = Vue.createApp({
         allow_frontend: product.allow_frontend_bool ? 1 : 0,
         allow_api: product.allow_api_bool ? 1 : 0,
         enabled: product.enabled_bool ? 1 : 0,
+        sort_order: Number(product.sort_order || 0),
         discounts: product.discounts
       };
       await this.fetchJson(this.adminUrl + '/api/products/save', { method: 'POST', body: payload, loadingText: '正在保存商品...' });
@@ -3129,7 +3162,7 @@ const app = Vue.createApp({
       return rows;
     },
     editGroup: function (row) {
-      this.groupForm = clone(row);
+      this.groupForm = Object.assign(emptyGroupForm(), clone(row), { product_prices: Object.assign({}, row.product_prices || {}) });
     },
     resetGroupForm: function () {
       this.groupForm = emptyGroupForm();

@@ -12,12 +12,14 @@ final class ProductService
     private PDO $pdo;
     private UpstreamClient $upstream;
     private PricingService $pricing;
+    private static bool $schemaReady = false;
 
     public function __construct()
     {
         $this->pdo = Database::connection();
         $this->upstream = new UpstreamClient();
         $this->pricing = new PricingService();
+        $this->ensureSchema();
     }
 
     public function syncFromUpstream(): array
@@ -72,7 +74,7 @@ final class ProductService
 
     public function list(array $user, bool $forApi = false): array
     {
-        $stmt = $this->pdo->query('SELECT * FROM products WHERE enabled = 1 ORDER BY id DESC');
+        $stmt = $this->pdo->query('SELECT * FROM products WHERE enabled = 1 ORDER BY sort_order ASC, id ASC');
         $group = $this->group((int) $user['user_group_id']);
         $list = [];
         foreach ($stmt->fetchAll() as $product) {
@@ -89,7 +91,7 @@ final class ProductService
 
     public function adminList(): array
     {
-        $stmt = $this->pdo->query('SELECT * FROM products ORDER BY id DESC');
+        $stmt = $this->pdo->query('SELECT * FROM products ORDER BY sort_order ASC, id ASC');
         $rows = [];
         foreach ($stmt->fetchAll() as $row) {
             $row = $this->normalize($row);
@@ -144,10 +146,11 @@ final class ProductService
 
         $this->pdo->beginTransaction();
         try {
-            $this->pdo->prepare('UPDATE products SET allow_frontend = ?, allow_api = ?, enabled = ?, updated_at = ? WHERE id = ?')->execute([
+            $this->pdo->prepare('UPDATE products SET allow_frontend = ?, allow_api = ?, enabled = ?, sort_order = ?, updated_at = ? WHERE id = ?')->execute([
                 !empty($data['allow_frontend']) ? 1 : 0,
                 !empty($data['allow_api']) ? 1 : 0,
                 !empty($data['enabled']) ? 1 : 0,
+                (int) ($data['sort_order'] ?? 0),
                 now(),
                 $id,
             ]);
@@ -202,6 +205,28 @@ final class ProductService
         throw new RuntimeException('用户组不存在');
     }
 
+    public function ensureSchema(): void
+    {
+        if (self::$schemaReady) return;
+
+        $column = $this->pdo->query("SHOW COLUMNS FROM products LIKE 'sort_order'")->fetch();
+        if (!$column) {
+            $this->pdo->exec('ALTER TABLE products ADD COLUMN sort_order INT NOT NULL DEFAULT 0 AFTER enabled');
+        }
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS user_group_product_prices (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_group_id INT UNSIGNED NOT NULL,
+            product_id INT UNSIGNED NOT NULL,
+            fixed_price BIGINT NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY uniq_group_product_price (user_group_id, product_id),
+            KEY idx_group_product_prices_product (product_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        self::$schemaReady = true;
+    }
+
     private function normalize(array $row): array
     {
         $row['id'] = (int) ($row['id'] ?? 0);
@@ -213,6 +238,7 @@ final class ProductService
         $row['allow_frontend'] = (int) ($row['allow_frontend'] ?? 1);
         $row['allow_api'] = (int) ($row['allow_api'] ?? 1);
         $row['enabled'] = (int) ($row['enabled'] ?? 1);
+        $row['sort_order'] = (int) ($row['sort_order'] ?? 0);
         $row['steps'] = json_array($row['steps_json'] ?? '[]');
         $row['input'] = json_array($row['input_json'] ?? '[]');
         $row['desc'] = json_array($row['desc_json'] ?? '[]');

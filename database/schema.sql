@@ -106,12 +106,14 @@ CREATE TABLE IF NOT EXISTS products (
   allow_frontend TINYINT(1) NOT NULL DEFAULT 1,
   allow_api TINYINT(1) NOT NULL DEFAULT 1,
   enabled TINYINT(1) NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
   payload_json LONGTEXT NULL,
   synced_at DATETIME NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uniq_products_sign (upstream_sign)
+  UNIQUE KEY uniq_products_sign (upstream_sign),
+  KEY idx_products_sort (sort_order, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS product_discounts (
@@ -124,6 +126,18 @@ CREATE TABLE IF NOT EXISTS product_discounts (
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
   KEY idx_product_discounts_product (product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS user_group_product_prices (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_group_id INT UNSIGNED NOT NULL,
+  product_id INT UNSIGNED NOT NULL,
+  fixed_price BIGINT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_group_product_price (user_group_id, product_id),
+  KEY idx_group_product_prices_product (product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS orders (

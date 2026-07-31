@@ -12,16 +12,23 @@ final class PricingService
         $unitCost = $isDelayed && !empty($product['price_cost_delayed']) ? (int) $product['price_cost_delayed'] : (int) $product['price_cost'];
         $baseCost = $unitCost * $units;
 
-        $markupMode = (string) ($group['markup_mode'] ?? 'fixed');
-        $markupValue = (float) ($group['markup_value'] ?? 0);
-        $sell = $baseCost;
-        if ($markupMode === 'percent') {
-            if ($markupValue > 1 && $markupValue <= 100) {
-                $markupValue /= 100;
-            }
-            $sell = (int) round($baseCost * (1 + $markupValue));
+        $fixedPrice = $this->groupFixedPrice((int) ($group['id'] ?? 0), (int) ($product['id'] ?? 0));
+        $priceSource = 'group_markup';
+        if ($fixedPrice !== null) {
+            $sell = $fixedPrice * $units;
+            $priceSource = 'group_fixed';
         } else {
-            $sell = $baseCost + (int) round($markupValue * $units);
+            $markupMode = (string) ($group['markup_mode'] ?? 'fixed');
+            $markupValue = (float) ($group['markup_value'] ?? 0);
+            $sell = $baseCost;
+            if ($markupMode === 'percent') {
+                if ($markupValue > 1 && $markupValue <= 100) {
+                    $markupValue /= 100;
+                }
+                $sell = (int) round($baseCost * (1 + $markupValue));
+            } else {
+                $sell = $baseCost + (int) round($markupValue * $units);
+            }
         }
 
         $discountRate = $this->discountRate((int) ($product['id'] ?? 0), $quantity);
@@ -32,7 +39,21 @@ final class PricingService
             'units' => $units,
             'discount_rate' => $discountRate,
             'profit' => max(0, $sell - $baseCost),
+            'price_source' => $priceSource,
+            'fixed_unit_price' => $fixedPrice,
         ];
+    }
+
+    private function groupFixedPrice(int $groupId, int $productId): ?int
+    {
+        if ($groupId <= 0 || $productId <= 0) {
+            return null;
+        }
+        $pdo = \Sushua\Core\Database::connection();
+        $stmt = $pdo->prepare('SELECT fixed_price FROM user_group_product_prices WHERE user_group_id = ? AND product_id = ? LIMIT 1');
+        $stmt->execute([$groupId, $productId]);
+        $value = $stmt->fetchColumn();
+        return $value === false ? null : max(0, (int) $value);
     }
 
     public function discountRate(int $productId, int $quantity): float
