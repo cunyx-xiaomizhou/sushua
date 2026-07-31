@@ -57,6 +57,11 @@ __SITE_FAVICON_TAG__
 .switch-inline{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
 .switch-inline label{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--muted)}
 .field .qq-preview{margin-top:8px}
+.order-qq-row{display:flex;align-items:center;gap:12px}
+.order-qq-row input{flex:1;min-width:0}
+.order-qq-avatar{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.order-qq-avatar img{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--avatar-bg);object-fit:cover}
+.order-qq-avatar .tiny{max-width:150px}
 .note-strong{font-weight:900;color:var(--tip-text);font-size:14px;line-height:1.8}
 .landing-intro{display:grid;gap:16px}
 .landing-quick-links{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -77,6 +82,7 @@ __SITE_FAVICON_TAG__
 .home-link-card h4{margin:0 0 8px}
 .home-link-card p{margin:0;color:var(--muted)}
 @media (max-width:860px){.split-equal,.info-grid,.small-stat-grid,.order-summary-grid,.landing-metrics,.landing-quick-links,.home-hero-grid,.theme-grid{grid-template-columns:1fr}.home-actions,.landing-group-actions,.login-dual-actions,.theme-actions{flex-direction:column;align-items:stretch}.pay-actions{justify-content:stretch}}
+@media (max-width:560px){.order-qq-avatar .tiny{display:none}}
 </style>
 </head>
 <body>
@@ -542,7 +548,7 @@ __SITE_FAVICON_TAG__
                 <p>前台仅保留在线下单。选择商品后，系统会按你的当前用户组实时计算最终价格。</p>
               </div>
             </div>
-            <div class="grid-2">
+            <div class="section-stack">
               <div class="panel">
                 <h3>下单信息</h3>
                 <div class="form-grid">
@@ -560,15 +566,38 @@ __SITE_FAVICON_TAG__
                     </select>
                   </div>
                   <div class="field">
+                    <label>QQ号</label>
+                    <div class="order-qq-row">
+                      <input v-model.trim="orderForm.qq" placeholder="请输入下单 QQ" @input="clearFeedSelection">
+                      <div v-if="orderForm.qq" class="order-qq-avatar">
+                        <img :src="qqAvatar(orderForm.qq)" alt="QQ 头像">
+                        <div class="tiny">用于辅助核对 QQ。</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="field">
                     <label>数量</label>
                     <input v-model.number="orderForm.num" type="number" :min="selectedProduct ? selectedProduct.min_num : 1" :max="selectedProduct ? selectedProduct.max_num : 999999999" :step="selectedProduct ? selectedProduct.step_num : 1" @change="scheduleQuote">
                   </div>
-                  <div class="field full">
-                    <label>QQ号</label>
-                    <input v-model.trim="orderForm.qq" placeholder="请输入下单 QQ" @input="clearFeedSelection">
-                    <div class="qq-preview" v-if="orderForm.qq">
-                      <img :src="qqAvatar(orderForm.qq)" alt="qq avatar">
-                      <div class="tiny">右侧自动显示 QQ 头像，方便确认输入是否正确。</div>
+                  <div v-if="selectedProduct" class="field full">
+                    <label>价格计算</label>
+                    <div v-if="quote" class="order-summary-box">
+                      <h4>{{ selectedProduct.name }} · 本次下单预估</h4>
+                      <div class="order-summary-grid">
+                        <div class="subtle"><span>下单数量</span><strong>{{ quote.quantity }}</strong></div>
+                        <div class="subtle"><span>最终价格</span><strong>{{ money(quote.price) }} {{ currency }}</strong></div>
+                        <div class="subtle"><span>折扣倍率</span><strong>{{ Number(quote.discount_rate || 1).toFixed(2) }}</strong></div>
+                        <div class="subtle"><span>计价单位</span><strong>每 {{ selectedProduct.step_num }} 数量</strong></div>
+                        <div class="subtle"><span>当前单价</span><strong>{{ money(selectedProduct.preview_price) }} {{ currency }}</strong></div>
+                        <div class="subtle"><span>数量范围</span><strong>{{ selectedProduct.min_num }} - {{ selectedProduct.max_num }}</strong></div>
+                      </div>
+                    </div>
+                    <div v-else class="placeholder-card">填写下单数量后，将在这里显示最终价格计算结果。</div>
+                  </div>
+                  <div v-if="selectedProduct && selectedProduct.desc && selectedProduct.desc.length" class="field full">
+                    <label>商品描述</label>
+                    <div class="desc-list">
+                      <div v-for="(desc,idx) in selectedProduct.desc" :key="idx" class="desc-item">{{ desc }}</div>
                     </div>
                   </div>
                   <div v-if="showDelayedOption" class="field full">
@@ -592,39 +621,11 @@ __SITE_FAVICON_TAG__
                     </template>
                   </div>
                 </div>
-                <div v-if="selectedProduct" class="order-summary-box section-gap">
-                  <h4>{{ selectedProduct.name }}</h4>
-                  <div class="order-summary-grid">
-                    <div class="subtle"><span>当前价格</span><strong>{{ money(selectedProduct.preview_price) }} {{ currency }}</strong></div>
-                    <div class="subtle"><span>计价单位</span><strong>每 {{ selectedProduct.step_num }} 数量</strong></div>
-                    <div class="subtle"><span>数量范围</span><strong>{{ selectedProduct.min_num }} - {{ selectedProduct.max_num }}</strong></div>
-                    <div class="subtle"><span>步长</span><strong>{{ selectedProduct.step_num }}</strong></div>
-                  </div>
-                  <div v-if="selectedProduct.desc && selectedProduct.desc.length" class="desc-list" style="margin-top:12px">
-                    <div v-for="(desc,idx) in selectedProduct.desc.slice(0,4)" :key="idx" class="desc-item">{{ desc }}</div>
-                  </div>
-                </div>
-                <div class="inline-actions">
+                <div class="inline-actions section-gap">
                   <button class="btn primary" @click="createOrder">提交订单</button>
                   <button class="btn ghost" @click="scheduleQuote">重新计算价格</button>
                 </div>
                 <div v-if="!filteredProducts.length" class="empty section-gap">当前没有符合筛选条件的商品。</div>
-              </div>
-
-              <div class="section-stack">
-                <div class="panel">
-                  <h3>价格模拟</h3>
-                  <div v-if="quote" class="order-summary-box">
-                    <h4>本次下单预估</h4>
-                    <div class="order-summary-grid">
-                      <div class="subtle"><span>下单数量</span><strong>{{ quote.quantity }}</strong></div>
-                      <div class="subtle"><span>最终价格</span><strong>{{ money(quote.price) }} {{ currency }}</strong></div>
-                      <div class="subtle"><span>折扣倍率</span><strong>{{ Number(quote.discount_rate || 1).toFixed(2) }}</strong></div>
-                      <div class="subtle"><span>计价单位</span><strong>每 {{ selectedProduct ? selectedProduct.step_num : '-' }} 数量</strong></div>
-                    </div>
-                  </div>
-                  <div v-else class="placeholder-card">选择商品并填写数量后，将在这里显示最终价格模拟。</div>
-                </div>
               </div>
             </div>
 
