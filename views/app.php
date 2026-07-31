@@ -726,6 +726,8 @@ __SITE_FAVICON_TAG__
               <div class="panel"><h3>使用说明</h3><div class="desc-list"><div class="desc-item">兑换者打开 <a :href="exchangePageUrl" target="_blank" rel="noopener">{{ exchangePageUrl }}</a> 即可兑换</div><div class="desc-item">生成兑换码只收取后台设置的生成手续费；兑换后订单费用按兑换码创建时的商品价格快照从生成者账户扣除。</div><div class="desc-item">兑换码长度至少 48 位，支持系统前缀、随机字符串和用户 UID 组合。</div></div></div>
             </div>
             <div class="panel section-gap"><div class="action-row"><h3>我的兑换码</h3><span class="tiny">展示完整兑换码；已使用或已销毁的兑换码不可再次编辑。</span></div><div v-if="!userState.exchangeCodes.length" class="empty">暂无兑换码。</div><div v-else class="code-list"><div v-for="row in userState.exchangeCodes" :key="row.id" class="code-item"><div style="min-width:0"><strong class="mono text-break">{{ row.code || row.display_code }}</strong><div class="tiny">{{ row.product_name_snapshot }} · {{ row.quantity }} 个 · {{ formatDate(row.created_at) }}<span v-if="row.redeemer_qq"> · 兑换者QQ {{ row.redeemer_qq }}</span></div></div><div class="inline-actions"><span class="badge" :class="row.status === 'used' ? 'success' : (row.status === 'destroyed' ? 'danger' : 'info')">{{ row.status === 'used' ? '已兑换' : (row.status === 'destroyed' ? '已销毁' : '未使用') }}</span><button v-if="row.status === 'unused'" class="btn sm ghost" @click="editExchangeCode(row)">编辑</button><button v-if="row.status === 'unused'" class="btn sm danger" @click="destroyExchangeCode(row)">销毁</button></div></div></div></div>
+          </div>
+
           <div v-else-if="userTab === 'recharge'">
             <div class="page-head">
               <div>
