@@ -1506,15 +1506,15 @@ __SITE_FAVICON_TAG__
             </div>
           </div>
 
-          <div v-else-if="['settings-basic','settings-theme','settings-sms','settings-security','exchange-rules'].includes(adminTab)">
+          <div v-else-if="['settings-basic','settings-theme','settings-sms','settings-security','scheduled-tasks','exchange-rules'].includes(adminTab)">
             <div class="page-head">
               <div>
-                <h2>{{ {'settings-basic':'SEO / 基础设置','settings-theme':'界面主题','settings-sms':'短信 / 邮件 / 验证','settings-security':'登录 / 注册 / 邀请','exchange-rules':'商品兑换码规则'}[adminTab] }}</h2>
+                <h2>{{ {'settings-basic':'基础设置','settings-theme':'界面主题','settings-sms':'短信 / 邮件 / 验证','settings-security':'登录 / 注册 / 邀请','scheduled-tasks':'定时任务 API','exchange-rules':'商品兑换码规则'}[adminTab] }}</h2>
                 <p>当前页面仅显示所选设置分类，保存时会保留其他分类的现有配置。</p>
               </div>
               <div class="inline-actions">
-                <button class="btn primary" @click="saveSettings">保存系统设置</button>
-                <button class="btn ghost" @click="loadAdminSettings(true)">重新加载</button>
+                <button v-if="adminTab !== 'scheduled-tasks'" class="btn primary" @click="saveSettings">保存系统设置</button>
+                <button class="btn ghost" @click="adminTab === 'scheduled-tasks' ? loadScheduledTaskConfig(true) : loadAdminSettings(true)">重新加载</button>
               </div>
             </div>
             <div class="section-stack">
@@ -1676,6 +1676,41 @@ __SITE_FAVICON_TAG__
                   <div class="field"><label>兑换订单 Cookie 有效期（天）</label><input v-model.number="settingsForm.exchange_code_cookie_days" type="number" min="7" max="3650"><div class="tiny">允许 7～3650 天，默认 60 天。</div></div>
                 </div>
                 <div class="auth-footnote">生成兑换码时按“每张生成服务费 × 数量”收取服务费，默认 0 额度。兑换成功后，商品费用从兑换码创建者账户扣除，公式为：数量 ÷ 计价单位（最低步长） × 用户价格。系统内部按数据库唯一用户 ID 记账，不依赖可能重复的公开 UID。</div>
+              </div>
+
+              <div v-if="adminTab === 'scheduled-tasks'" class="panel">
+                <div class="action-row">
+                  <div>
+                    <h3>定时任务 HTTP API</h3>
+                    <p class="panel-sub">不依赖 Shell，可由宝塔计划任务、监控平台或其他定时服务调用。</p>
+                  </div>
+                  <button class="btn danger" @click="resetScheduledTaskKey">重置系统密钥</button>
+                </div>
+                <div class="auth-footnote danger-note section-gap">重置后旧密钥立即失效，所有已配置的定时任务都必须同步更新。</div>
+                <div class="form-grid section-gap">
+                  <div class="field full">
+                    <label>系统密钥（仅管理员可查看和重置）</label>
+                    <div class="search-row">
+                      <input :value="adminState.scheduledTasks.system_key" readonly autocomplete="off" spellcheck="false" class="mono">
+                      <button class="btn ghost" @click="copyScheduledTaskValue(adminState.scheduledTasks.system_key, '系统密钥')">复制</button>
+                    </div>
+                  </div>
+                  <div class="field full">
+                    <label>更新商品数据 API（GET / POST）</label>
+                    <div class="search-row">
+                      <input :value="scheduledTaskUrl(adminState.scheduledTasks.products_endpoint)" readonly class="mono">
+                      <button class="btn ghost" @click="copyScheduledTaskValue(scheduledTaskUrl(adminState.scheduledTasks.products_endpoint), '商品更新 API')">复制</button>
+                    </div>
+                  </div>
+                  <div class="field full">
+                    <label>更新订单 API（GET / POST）</label>
+                    <div class="search-row">
+                      <input :value="scheduledTaskUrl(adminState.scheduledTasks.orders_endpoint)" readonly class="mono">
+                      <button class="btn ghost" @click="copyScheduledTaskValue(scheduledTaskUrl(adminState.scheduledTasks.orders_endpoint), '订单更新 API')">复制</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="auth-footnote section-gap">页面中的一键复制地址使用 system_key 查询参数，适合只支持 URL 的定时平台。更推荐使用 Authorization: Bearer 或 X-System-Key 请求头，避免密钥出现在 URL 访问日志中。</div>
               </div>
 
               <div v-if="adminTab === 'settings-theme'" class="panel">
@@ -2094,7 +2129,7 @@ const app = Vue.createApp({
       adminMenuOpenKeys: { products: true, groups: true, users: true, orders: true, api: true, recharge: true, exchange: true, settings: true, logs: true },
       adminState: {
         dashboard: null, products: [], groups: [], users: [], userKeyword: '', orders: [], upstream: [], upstreamBalance: null, upstreamBalanceError: '', cards: [],
-        payments: { merchants: [], channels: [], recharge_orders: [] }, settingsRaw: {}, logs: [], logLevel: '', logChannel: '',
+        payments: { merchants: [], channels: [], recharge_orders: [] }, settingsRaw: {}, scheduledTasks: { system_key: '', products_endpoint: '', orders_endpoint: '' }, logs: [], logLevel: '', logChannel: '',
         exchange: { codes: [], logs: [] }
       },
       groupForm: emptyGroupForm(),
@@ -2178,7 +2213,8 @@ const app = Vue.createApp({
           { key: 'settings-basic', label: 'SEO / 基础设置', description: '站点名称、备案、群号与后台路径。' },
           { key: 'settings-theme', label: '界面主题', description: '后台化所有颜色并支持导入导出。' },
           { key: 'settings-sms', label: '短信 / 邮件 / 极验', description: '配置腾讯云、阿里云、自定义 HTTP 与 SMTP。' },
-          { key: 'settings-security', label: '登录 / 邀请 / 其他', description: '登录注册策略、邀请码规则和首页开关。' }
+          { key: 'settings-security', label: '登录 / 邀请 / 其他', description: '登录注册策略、邀请码规则和首页开关。' },
+          { key: 'scheduled-tasks', label: '定时任务 API', description: '管理外部定时调用密钥与接口。' }
         ] },
         { key: 'logs', label: '系统日志', children: [
           { key: 'logs-list', label: '日志列表', description: '按等级与频道筛选系统日志。' }
@@ -3085,6 +3121,7 @@ const app = Vue.createApp({
         'settings-theme': () => this.loadAdminSettings(force),
         'settings-sms': () => this.loadAdminSettings(force),
         'settings-security': () => this.loadAdminSettings(force),
+        'scheduled-tasks': () => this.loadScheduledTaskConfig(force),
         'logs-list': () => this.loadAdminLogs(force)
       };
       const loader = loaders[tab] || loaders.dashboard;
@@ -3344,6 +3381,44 @@ const app = Vue.createApp({
       this.notify('支付通道已保存', 'success');
       this.resetChannelForm();
       await this.loadAdminRecharge(true);
+    },
+    async loadScheduledTaskConfig(force) {
+      const data = await this.fetchJson(this.adminUrl + '/api/scheduled-tasks/key', { method: 'GET', loadingText: '正在加载定时任务配置...', silent: !force });
+      this.adminState.scheduledTasks = Object.assign({ system_key: '', products_endpoint: '', orders_endpoint: '' }, data || {});
+      return data;
+    },
+    scheduledTaskUrl: function (endpoint) {
+      const path = String(endpoint || '');
+      if (!path) return '';
+      const absolute = new URL(path, window.location.origin).toString();
+      const separator = absolute.includes('?') ? '&' : '?';
+      return absolute + separator + 'system_key=' + encodeURIComponent(String(this.adminState.scheduledTasks.system_key || ''));
+    },
+    async copyScheduledTaskValue(value, label) {
+      const text = String(value || '');
+      if (!text) {
+        this.notify('暂无可复制内容', 'warning');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        const input = document.createElement('textarea');
+        input.value = text;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      this.notify((label || '内容') + '已复制', 'success');
+    },
+    async resetScheduledTaskKey() {
+      if (!await this.confirmAction('重置后旧系统密钥会立即失效，已配置的商品和订单定时任务将无法继续调用，确认重置吗？', { title: '重置系统密钥', confirmText: '确认重置' })) return;
+      const data = await this.fetchJson(this.adminUrl + '/api/scheduled-tasks/key/reset', { method: 'POST', body: {}, loadingText: '正在重置系统密钥...' });
+      this.adminState.scheduledTasks = Object.assign({ system_key: '', products_endpoint: '', orders_endpoint: '' }, data || {});
+      this.notify('系统密钥已重置，请立即更新所有定时任务', 'success');
     },
     async loadAdminSettings(force) {
       const raw = await this.fetchJson(this.adminUrl + '/api/settings', { method: 'GET', loadingText: '正在加载系统设置...', silent: !force });

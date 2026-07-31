@@ -176,6 +176,24 @@ SOURCE database/import_local.sql;
 5. 在“系统设置”设置额度名称、前台下单/对接总开关、说说图片来源和验证码策略。
 6. 在“对接设置”设置 API Key 生成条件；只有具备 Agent 策略的用户才会生成/重置 API Key。
 
+## 外部定时任务 API
+
+除 CLI 脚本外，系统也提供两个带系统密钥校验的 HTTP API，便于宝塔计划任务或其他定时服务调用：
+
+```text
+GET/POST /api/cron/products/sync   更新商品数据
+GET/POST /api/cron/orders/sync     更新进行中的订单
+```
+
+管理员登录管理后台后，在“系统设置 -> 定时任务 API”中查看或重置系统密钥。推荐把密钥放在请求头中，避免 URL 被访问日志记录：
+
+```bash
+curl -X POST -H "Authorization: Bearer 您的系统密钥" https://您的域名/api/cron/products/sync
+curl -X POST -H "X-System-Key: 您的系统密钥" https://您的域名/api/cron/orders/sync
+```
+
+仅支持 URL 调用的平台也可使用 `?system_key=您的系统密钥`。重置系统密钥后旧密钥立即失效，请同步更新所有定时任务；接口响应和系统日志均不会回显调用时提交的密钥。
+
 ## 易支付
 
 ### 商户

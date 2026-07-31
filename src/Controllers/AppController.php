@@ -17,6 +17,7 @@ use Sushua\Services\OrderService;
 use Sushua\Services\PaymentService;
 use Sushua\Services\ProductExchangeCodeService;
 use Sushua\Services\ProductService;
+use Sushua\Services\ScheduledTaskService;
 use Sushua\Services\SettingsService;
 use Sushua\Services\UpstreamClient;
 use Sushua\Services\UserGroupService;
@@ -39,6 +40,8 @@ final class AppController
         if ($path === '/captcha/image') return $this->captcha();
         if ($path === '/proxy/image') return $this->proxyImage((string) $request->input('url', ''), (string) $request->input('fallback', ''));
         if ($path === '/internal/recharge/notify') return $this->rechargeNotify($request);
+        if ($path === '/api/cron/products/sync') return $this->scheduledTaskApi($request, 'products');
+        if ($path === '/api/cron/orders/sync') return $this->scheduledTaskApi($request, 'orders');
         if (str_starts_with($path, '/api/')) return $this->api($request, substr($path, 5));
         if (str_starts_with($path, '/user/api/')) return $this->userApi($request, substr($path, 9));
         if ($path === '/card/redeem' && $request->method() === 'POST') return $this->redeemCard($request);
@@ -141,6 +144,63 @@ final class AppController
         header('Cache-Control: no-store, no-cache, must-revalidate');
         echo (new CaptchaService())->svg();
         exit;
+    }
+
+    private function scheduledTaskApi(Request $request, string $task): mixed
+    {
+        if (!in_array($request->method(), ['GET', 'POST'], true)) {
+            header('Allow: GET, POST');
+            return Response::error('请求方法不受支持', 405);
+        }
+
+        $service = new ScheduledTaskService();
+        $key = $this->scheduledTaskRequestKey($request);
+        if (!$service->verify($key)) {
+            Logger::write('warning', 'scheduled_task', '定时任务系统密钥核验失败', [
+                'task' => $task,
+                'ip' => $request->ip(),
+            ]);
+            return Response::error('系统密钥无效', 401);
+        }
+
+        try {
+            return Response::success($service->run($task, $request->ip()), '定时任务执行成功');
+        } catch (\Throwable $e) {
+            return Response::error($e->getMessage(), 500);
+        }
+    }
+
+    private function scheduledTaskRequestKey(Request $request): string
+    {
+        $authorization = trim((string) $request->header('Authorization', $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? ''));
+        if (preg_match('/^Bearer\s+(.+)$/i', $authorization, $match) === 1) {
+            return trim($match[1]);
+        }
+
+        $headerKey = trim((string) $request->header('X-System-Key', ''));
+        if ($headerKey !== '') {
+            return $headerKey;
+        }
+
+        return trim((string) $request->input('system_key', $request->input('key', '')));
+    }
+
+    private function scheduledTaskKeyInfo(): array
+    {
+        return [
+            'system_key' => (new ScheduledTaskService())->key(),
+            'products_endpoint' => route_url('/api/cron/products/sync'),
+            'orders_endpoint' => route_url('/api/cron/orders/sync'),
+        ];
+    }
+
+    private function resetScheduledTaskKey(array $admin): array
+    {
+        return [
+            'system_key' => (new ScheduledTaskService())->resetKey($admin),
+            'products_endpoint' => route_url('/api/cron/products/sync'),
+            'orders_endpoint' => route_url('/api/cron/orders/sync'),
+        ];
     }
 
     private function api(Request $request, string $action): mixed
@@ -428,6 +488,8 @@ final class AppController
                 $action === 'recharge-orders' => array_map([$this, 'normalizeRechargeRow'], $payments->rechargeOrders()),
                 $action === 'settings' && $request->method() === 'GET' => $this->settings->all(),
                 $action === 'settings/save' => $this->saveSettings($data),
+                $action === 'scheduled-tasks/key' && $request->method() === 'GET' => $this->scheduledTaskKeyInfo(),
+                $action === 'scheduled-tasks/key/reset' && $request->method() === 'POST' => $this->resetScheduledTaskKey($admin),
                 $action === 'upstream' && $request->method() === 'GET' => $pdo->query('SELECT id,name,base_url,upstream_uid,enabled,is_default,options_json,created_at,updated_at FROM upstream_accounts ORDER BY id DESC')->fetchAll(),
                 $action === 'upstream/save' => $this->saveUpstream($data),
                 $action === 'upstream/balance' => $this->upstreamBalance(),

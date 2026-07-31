@@ -221,7 +221,15 @@ final class AuthService
         $strategyAgent = $flags['strategy_agent'];
         $role = (string) ($data['account_role'] ?? 'member');
         $balance = (int) ($data['balance'] ?? 0);
-        $apiOverride = array_key_exists('api_enabled_override', $data) && $data['api_enabled_override'] !== '' ? (int) $data['api_enabled_override'] : null;
+        $apiOverride = null;
+        if (array_key_exists('api_enabled_override', $data) && $data['api_enabled_override'] !== '' && $data['api_enabled_override'] !== null) {
+            if (!in_array((string) $data['api_enabled_override'], ['0', '1'], true)) {
+                throw new RuntimeException('单独对接覆盖设置不合法');
+            }
+            $apiOverride = (int) $data['api_enabled_override'];
+        }
+        $banUntil = trim((string) ($data['ban_until'] ?? ''));
+        $banReason = trim((string) ($data['ban_reason'] ?? ''));
         $allowedRoles = ['member', 'agent', 'admin', 'owner'];
         $allowedStatuses = ['active', 'banned'];
 
@@ -329,7 +337,7 @@ final class AuthService
             $this->pdo->beginTransaction();
             try {
                 $sets = ['username = ?', 'nickname = ?', 'qq = ?', 'email = ?', 'mobile = ?', 'avatar = ?', 'user_group_id = ?', 'strategy_user = ?', 'strategy_agent = ?', 'api_enabled_override = ?', 'status = ?', 'ban_until = ?', 'ban_reason = ?', 'updated_at = ?'];
-                $params = [$username, $nickname, $qq, $email ?: null, $mobile ?: null, $avatarValue, $groupId, $strategyUser, $strategyAgent, $apiOverride, $status, $data['ban_until'] ?: null, $data['ban_reason'] ?: null, now()];
+                $params = [$username, $nickname, $qq, $email ?: null, $mobile ?: null, $avatarValue, $groupId, $strategyUser, $strategyAgent, $apiOverride, $status, $banUntil !== '' ? $banUntil : null, $banReason !== '' ? $banReason : null, now()];
                 if ($strategyAgent === 0) {
                     $sets[] = 'api_key = ?';
                     $params[] = null;
@@ -377,6 +385,12 @@ final class AuthService
                     }
                 }
                 $this->pdo->commit();
+                Logger::write('info', 'user', '管理员更新用户信息', [
+                    'actor_id' => (int) $actor['id'],
+                    'user_id' => $id,
+                    'connect_policy' => $flags['connect_policy'],
+                    'api_enabled_override' => $apiOverride,
+                ], (int) $actor['id']);
             } catch (\Throwable $e) {
                 if ($this->pdo->inTransaction()) {
                     $this->pdo->rollBack();
