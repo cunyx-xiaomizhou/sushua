@@ -443,13 +443,10 @@ final class AppController
 
     private function upstreamBalance(): array
     {
-        $response = (new UpstreamClient())->getBalance();
-        $balance = UpstreamClient::extractBalance($response);
-        if ($balance === null) {
-            throw new RuntimeException('Upstream returned successfully, but no recognizable balance field was found');
-        }
+        $client = new UpstreamClient();
+        $response = $client->getBalance();
         return [
-            'balance' => $balance,
+            'balance' => $client->getBalanceAmount($response),
             'response' => $response,
         ];
     }
@@ -464,9 +461,15 @@ final class AppController
             return (int) $stmt->fetchColumn();
         };
         $upstream = null;
+        $upstreamError = null;
         try {
-            $upstream = UpstreamClient::extractBalance((new UpstreamClient())->getBalance());
-        } catch (\Throwable) {}
+            // The upstream contract defines the displayed value as data.amount
+            // from a fresh /api/getBalance request on every dashboard load.
+            $upstream = (new UpstreamClient())->getBalanceAmount();
+        } catch (\Throwable $e) {
+            $upstreamError = $e->getMessage();
+            Logger::write('warning', 'upstream', '获取上游余额失败', ['error' => $upstreamError]);
+        }
 
         return [
             'orders_today' => $scalar('SELECT COUNT(*) FROM orders WHERE created_at >= ?', [$today]),
@@ -474,6 +477,7 @@ final class AppController
             'profit_today' => $scalar('SELECT COALESCE(SUM(profit),0) FROM orders WHERE created_at >= ?', [$today]),
             'balance_total' => $scalar('SELECT COALESCE(SUM(balance),0) FROM users WHERE status <> "deleted"'),
             'upstream_balance' => $upstream,
+            'upstream_balance_error' => $upstreamError,
             'today_consume_rank' => $pdo->query('SELECT u.username,u.nickname,COALESCE(SUM(o.user_price),0) total FROM orders o JOIN users u ON u.id=o.user_id WHERE o.created_at >= "' . $today . '" GROUP BY o.user_id ORDER BY total DESC LIMIT 10')->fetchAll(),
             'total_consume_rank' => $pdo->query('SELECT username,nickname,total_consume FROM users WHERE status <> "deleted" ORDER BY total_consume DESC LIMIT 10')->fetchAll(),
             'balance_rank' => $pdo->query('SELECT username,nickname,balance FROM users WHERE status <> "deleted" ORDER BY balance DESC LIMIT 10')->fetchAll(),
