@@ -458,7 +458,14 @@ final class AuthService
             $kw = '%' . $filters['keyword'] . '%';
             array_push($params, $kw, $kw, $kw, $kw);
         }
-        $sql .= " ORDER BY CASE u.account_role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, u.id DESC LIMIT 200";
+        $apiKeyOnly = in_array(strtolower(trim((string) ($filters['api_key_only'] ?? ''))), ['1', 'true', 'on'], true);
+        if ($apiKeyOnly) {
+            $sql .= ' AND u.api_key IS NOT NULL AND TRIM(u.api_key) <> ""';
+        }
+        $sql .= " ORDER BY CASE u.account_role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, u.id DESC";
+        if (!$apiKeyOnly) {
+            $sql .= ' LIMIT 200';
+        }
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return array_map(fn (array $row) => $this->sanitizeUser($row), $stmt->fetchAll());

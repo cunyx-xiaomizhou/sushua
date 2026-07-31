@@ -213,7 +213,7 @@ final class OrderService
         return array_map(fn (array $row): array => $this->normalize($row), $stmt->fetchAll());
     }
 
-    public function getById(int $id, int $viewerId, bool $admin = false): array
+    public function getById(int $id, int $viewerId, bool $admin = false, bool $forceSync = false): array
     {
         $order = $this->fetchOrderRow($id);
         if (!$order) {
@@ -222,14 +222,18 @@ final class OrderService
         if (!$admin && (int) $order['user_id'] !== $viewerId) {
             throw new RuntimeException('无权查看该订单');
         }
-        if ($this->shouldSyncOnRead($order, $admin)) {
+        if (($forceSync && $this->shouldSyncOrder($order)) || $this->shouldSyncOnRead($order, $admin)) {
             return $this->syncOrder($order);
         }
         return $this->normalize($order);
     }
 
-    public function findForActor(array $actor, string $bid, bool $admin = false): array
+    public function findForActor(array $actor, string $bid, bool $admin = false, bool $forceSync = false): array
     {
+        $bid = trim($bid);
+        if ($bid === '') {
+            throw new RuntimeException('订单号不能为空');
+        }
         $sql = 'SELECT id FROM orders WHERE (upstream_order_no = ? OR order_no = ?)';
         $params = [$bid, $bid];
         if (!$admin) {
@@ -243,7 +247,7 @@ final class OrderService
         if ($id <= 0) {
             throw new RuntimeException('订单不存在');
         }
-        return $this->getById($id, (int) $actor['id'], $admin);
+        return $this->getById($id, (int) $actor['id'], $admin, $forceSync);
     }
 
 
@@ -499,7 +503,7 @@ final class OrderService
 
     private function fetchOrderRow(int $id): ?array
     {
-        $stmt = $this->pdo->prepare('SELECT o.*, p.name AS product_name FROM orders o LEFT JOIN products p ON p.id = o.product_id WHERE o.id = ? LIMIT 1');
+        $stmt = $this->pdo->prepare('SELECT o.*, u.username, u.nickname, p.name AS product_name FROM orders o LEFT JOIN users u ON u.id = o.user_id LEFT JOIN products p ON p.id = o.product_id WHERE o.id = ? LIMIT 1');
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         return $row ?: null;

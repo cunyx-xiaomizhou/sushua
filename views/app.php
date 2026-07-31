@@ -1198,7 +1198,7 @@ __SITE_FAVICON_TAG__
             <div class="page-head">
               <div>
                 <h2>{{ adminTab === 'users-create' ? (userForm.id ? '编辑用户' : '新增用户') : (adminTab === 'api-keys' ? 'API Key 管理' : '用户列表') }}</h2>
-                <p>{{ adminTab === 'users-create' ? '创建或修改用户资料、余额、用户组和账号权限。' : (adminTab === 'api-keys' ? '查看允许对接的用户并为其重置 API Key。' : '搜索、查看、封禁或删除系统用户。') }}</p>
+                <p>{{ adminTab === 'users-create' ? '创建或修改用户资料、余额、用户组和账号权限。' : (adminTab === 'api-keys' ? '查看所有已生成 API Key 的用户并为其重置密钥。' : '搜索、查看、封禁或删除系统用户。') }}</p>
               </div>
               <div v-if="adminTab === 'users-list'" class="search-row" style="max-width:320px;width:100%">
                 <div class="field full" style="margin:0"><label>搜索用户</label><input v-model.trim="adminState.userKeyword" placeholder="用户名 / QQ / UID"></div>
@@ -1267,8 +1267,8 @@ __SITE_FAVICON_TAG__
                 </div>
               </div>
               <div v-if="adminTab === 'api-keys'" class="panel">
-                <div class="action-row"><div><h3>允许对接的用户</h3><p class="panel-sub">用户也可以在个人资料页自行生成或重置 API Key；管理员可在这里协助重置。</p></div><button class="btn ghost" @click="loadAdminUsers(true)">刷新列表</button></div>
-                <div class="table-wrap section-gap"><table class="table"><thead><tr><th>用户</th><th>策略</th><th>UID</th><th>API Key</th><th>操作</th></tr></thead><tbody><tr v-for="row in agentUsers" :key="row.id"><td>{{ row.nickname || row.username }}</td><td>{{ connectPolicyLabel(connectPolicyOf(row)) }}</td><td class="mono">{{ row.uid }}</td><td class="wrap mono">{{ row.api_key || '尚未生成' }}</td><td><button class="btn sm warning" @click="resetUserApiKey(row)">{{ row.api_key ? '重置 Key' : '生成 Key' }}</button></td></tr></tbody></table></div>
+                <div class="action-row"><div><h3>已生成 API Key 的用户</h3><p class="panel-sub">这里显示所有拥有 API Key 的用户，包括普通用户、代理、管理员和站长，不受当前对接策略影响。</p></div><button class="btn ghost" @click="loadAdminUsers(true, true)">刷新列表</button></div>
+                <div class="table-wrap section-gap"><table class="table"><thead><tr><th>用户</th><th>身份</th><th>策略</th><th>UID</th><th>API Key</th><th>操作</th></tr></thead><tbody><tr v-for="row in apiKeyUsers" :key="row.id"><td>{{ row.nickname || row.username }}</td><td>{{ row.role_label || row.account_role }}</td><td>{{ connectPolicyLabel(connectPolicyOf(row)) }}</td><td class="mono">{{ row.uid }}</td><td class="wrap mono">{{ row.api_key }}</td><td><button class="btn sm warning" @click="resetUserApiKey(row)">重置 Key</button></td></tr><tr v-if="!apiKeyUsers.length"><td colspan="6" class="muted">暂无已生成 API Key 的用户</td></tr></tbody></table></div>
               </div>
             </div>
           </div>
@@ -1282,6 +1282,33 @@ __SITE_FAVICON_TAG__
               <div class="inline-actions">
                 <button class="btn primary" @click="syncAdminOrders">更新速刷订单</button>
                 <button class="btn ghost" @click="loadAdminOrders(true)">刷新列表</button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="action-row">
+                <div><h3>订单查单</h3><p class="panel-sub">输入系统订单号或上游订单号，系统会查询订单并同步可更新的上游状态。</p></div>
+              </div>
+              <div class="search-row section-gap">
+                <div class="field" style="margin:0"><label>订单号</label><input v-model.trim="adminState.orderSearch" placeholder="系统订单号 / 上游订单号" @keyup.enter="searchAdminOrder()"></div>
+                <button class="btn primary" @click="searchAdminOrder()">查单</button>
+                <button v-if="adminState.orderDetail" class="btn ghost" @click="clearAdminOrderDetail">清除结果</button>
+              </div>
+              <div v-if="adminState.orderDetail" class="order-summary-box section-gap">
+                <div class="order-summary-grid">
+                  <div class="subtle"><span>系统订单号</span><strong class="mono wrap">{{ adminState.orderDetail.display_order_no || adminState.orderDetail.order_no }}</strong></div>
+                  <div class="subtle"><span>上游订单号</span><strong class="mono wrap">{{ adminState.orderDetail.upstream_order_no || '-' }}</strong></div>
+                  <div class="subtle"><span>用户</span><strong>{{ adminState.orderDetail.nickname || adminState.orderDetail.username || ('#' + adminState.orderDetail.user_id) }}</strong></div>
+                  <div class="subtle"><span>状态</span><strong><span class="badge" :class="badgeTone(adminState.orderDetail.state)">{{ adminState.orderDetail.state }}</span></strong></div>
+                  <div class="subtle"><span>商品</span><strong>{{ adminState.orderDetail.product_name || '-' }}</strong></div>
+                  <div class="subtle"><span>下单 QQ</span><strong>{{ adminState.orderDetail.target_qq || '-' }}</strong></div>
+                  <div class="subtle"><span>数量</span><strong>{{ adminState.orderDetail.quantity }}</strong></div>
+                  <div class="subtle"><span>进度（开始 / 当前 / 结束）</span><strong>{{ adminState.orderDetail.start_num ?? '-' }} / {{ adminState.orderDetail.current_num ?? '-' }} / {{ adminState.orderDetail.finish_num ?? '-' }}</strong></div>
+                  <div class="subtle"><span>用户花费</span><strong>{{ money(adminState.orderDetail.user_price) }} <small class="amount-yuan">{{ yuanApprox(adminState.orderDetail.user_price) }}</small></strong></div>
+                  <div class="subtle"><span>成本 / 利润</span><strong>{{ money(adminState.orderDetail.cost_price) }} / {{ money(adminState.orderDetail.profit) }}</strong></div>
+                  <div class="subtle"><span>创建时间</span><strong>{{ formatDate(adminState.orderDetail.created_at) }}</strong></div>
+                  <div class="subtle"><span>最后同步</span><strong>{{ formatDate(adminState.orderDetail.last_sync_at || adminState.orderDetail.updated_at) }}</strong></div>
+                </div>
+                <div class="tip-box section-gap"><div class="note-strong">备注：{{ adminState.orderDetail.latest_message || '无' }}</div></div>
               </div>
             </div>
             <div class="panel">
@@ -1313,6 +1340,7 @@ __SITE_FAVICON_TAG__
                       <td>{{ money(row.profit) }}<div class="amount-yuan">{{ yuanApprox(row.profit) }}</div></td>
                       <td class="wrap">{{ row.latest_message || '-' }}</td>
                       <td class="actions-cell">
+                        <button class="btn sm primary" @click="showAdminOrderDetail(row)">查单</button>
                         <button class="btn sm warning" :disabled="!row.can_retry" @click="adminRetryOrder(row)">补单</button>
                         <button class="btn sm danger" :disabled="!row.can_refund" @click="adminRefundOrder(row,false)">退单</button>
                         <button class="btn sm ghost" @click="adminRefundOrder(row,true)">仅退款</button>
@@ -2022,7 +2050,7 @@ const app = Vue.createApp({
       adminSidebarCollapsed: false,
       adminMenuOpenKeys: { products: true, groups: true, users: true, orders: true, api: true, recharge: true, exchange: true, settings: true, logs: true },
       adminState: {
-        dashboard: null, products: [], groups: [], users: [], userKeyword: '', orders: [], upstream: [], upstreamBalance: null, upstreamBalanceError: '', cards: [],
+        dashboard: null, products: [], groups: [], users: [], userKeyword: '', orders: [], orderSearch: '', orderDetail: null, upstream: [], upstreamBalance: null, upstreamBalanceError: '', cards: [],
         payments: { merchants: [], channels: [], recharge_orders: [] }, settingsRaw: {}, scheduledTasks: { system_key: '', products_endpoint: '', orders_endpoint: '' }, logs: [], logLevel: '', logChannel: '',
         exchange: { codes: [], logs: [], filters: { product_id: '', status: '', redeemer_qq: '', sort: 'created_desc' } }
       },
@@ -2156,10 +2184,10 @@ const app = Vue.createApp({
           .some(function (value) { return String(value || '').toLowerCase().includes(keyword); });
       });
     },
-    agentUsers: function () {
+    apiKeyUsers: function () {
       const rows = Array.isArray(this.adminState.users) ? this.adminState.users : [];
       return rows.filter(function (row) {
-        return String(row.connect_policy || '') === 'agent' || boolish(row.strategy_agent);
+        return String(row.api_key || '').trim() !== '';
       });
     },
     selectedProduct: function () {
@@ -3029,7 +3057,7 @@ const app = Vue.createApp({
         'recharge-orders': () => this.loadAdminRecharge(force),
         'api-conditions': () => this.loadAdminSettings(force),
         'upstream-manage': () => this.loadAdminUpstream(force),
-        'api-keys': () => this.loadAdminUsers(force),
+        'api-keys': () => this.loadAdminUsers(force, true),
         'cards-generate': () => this.loadAdminCards(force),
         'cards-list': () => this.loadAdminCards(force),
         'payments-merchants': () => this.loadAdminRecharge(force),
@@ -3117,8 +3145,9 @@ const app = Vue.createApp({
       this.notify('默认注册用户组已更新', 'success');
       await this.loadAdminGroups(true);
     },
-    async loadAdminUsers(force) {
-      const rows = await this.fetchJson(this.adminUrl + '/api/users', { method: 'POST', body: { keyword: this.adminState.userKeyword || '' }, loadingText: '正在加载用户...', silent: !force });
+    async loadAdminUsers(force, apiKeyOnly) {
+      const keyOnly = apiKeyOnly === true || this.adminTab === 'api-keys';
+      const rows = await this.fetchJson(this.adminUrl + '/api/users', { method: 'POST', body: { keyword: keyOnly ? '' : (this.adminState.userKeyword || ''), api_key_only: keyOnly ? 1 : 0 }, loadingText: '正在加载用户...', silent: !force });
       this.adminState.users = rows || [];
       if (!this.userForm.user_group_id && this.adminState.groups.length) this.userForm.user_group_id = Number(this.adminState.groups[0].id);
       return rows;
@@ -3174,6 +3203,25 @@ const app = Vue.createApp({
       const rows = await this.fetchJson(this.adminUrl + '/api/orders', { method: 'GET', loadingText: '正在加载订单...', silent: !force });
       this.adminState.orders = rows || [];
       return rows;
+    },
+    async searchAdminOrder(row) {
+      const rowOrderNo = row ? (row.display_order_no || row.order_no || row.upstream_order_no || '') : '';
+      const bid = String(rowOrderNo || this.adminState.orderSearch || '').trim();
+      if (!bid) {
+        this.notify('请输入系统订单号或上游订单号', 'warning');
+        return;
+      }
+      const detail = await this.fetchJson(this.withQuery(this.adminUrl + '/api/orders/detail', { bid: bid }), { method: 'GET', loadingText: '正在查询并同步订单...' });
+      this.adminState.orderSearch = detail.display_order_no || detail.order_no || bid;
+      this.adminState.orderDetail = Object.assign({}, row || {}, detail || {});
+      await this.loadAdminOrders(false);
+    },
+    showAdminOrderDetail: function (row) {
+      return this.searchAdminOrder(row);
+    },
+    clearAdminOrderDetail: function () {
+      this.adminState.orderDetail = null;
+      this.adminState.orderSearch = '';
     },
     async syncAdminOrders() {
       const data = await this.fetchJson(this.adminUrl + '/api/orders/sync', { method: 'POST', body: {}, loadingText: '正在同步订单状态...' });

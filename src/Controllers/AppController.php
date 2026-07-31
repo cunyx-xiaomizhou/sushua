@@ -467,6 +467,7 @@ final class AppController
                 $action === 'users/delete' => (new AuthService())->softDeleteUser($admin, (int) ($data['id'] ?? 0)),
                 $action === 'users/reset-key' => ['api_key' => (new AuthService())->resetApiKey((int) ($data['id'] ?? 0))],
                 $action === 'orders' => (new OrderService())->list($admin, true),
+                $action === 'orders/detail' && $request->method() === 'GET' => (new OrderService())->findForActor($admin, trim((string) ($data['bid'] ?? $data['order_no'] ?? '')), true, true),
                 $action === 'exchange-codes' && $request->method() === 'GET' => (new ProductExchangeCodeService())->listForAdmin($data),
                 $action === 'exchange-code/save' && $request->method() === 'POST' => (new ProductExchangeCodeService())->save($admin, $data, true),
                 $action === 'exchange-code/destroy' && $request->method() === 'POST' => (new ProductExchangeCodeService())->destroy($admin, (int) ($data['id'] ?? 0), true),
