@@ -1,360 +1,161 @@
-# Sushua 上游加价售卖系统
+﻿# 系统名称
 
-基于 **PHP 8.3 + MySQL 5.6+ + Vue 3** 的上游商品加价售卖/代理对接系统。系统内部所有余额、价格、充值和流水统一使用“额度”，不在业务页面显示其他货币单位。
+**Sushua 上游加价售卖系统**
 
-## 功能概览
+# 系统介绍
 
-- 上游账户配置、商品同步、商品前台上架/对接开关
-- 用户组门槛、固定/百分比加价、充值赠送、默认注册组、余额降级策略
-- User / Agent / Owner / Admin 共用用户表，Agent 才能生成 API Key
-- 普通下单、对接下单、动态商品参数、QQ 头像预览、说说列表与图片代理
-- 订单状态同步、订单详情、上游补单、上游退单、管理员仅退款
-- 每笔订单保存用户花费、上游成本和利润；所有资金变化写入 `balance_ledger`
-- 易支付多商户、多支付通道、异步回调验签和重复回调防护
-- 一次性卡密、多次通兑卡密（`-1` 表示无限次，`0` 表示不可兑换）
-- SMTP 发信、腾讯云/阿里云短信、自定义 HTTP 短信扩展接口
-- 邀请码、有效邀请、SEO、图片/极验/短信/邮件登录开关、可自定义后台路径
-- 安装向导、系统日志和资金流水日志
+Sushua 是一套面向上游商品代理、在线下单和订单管理场景的 Web 系统。系统支持上游货源配置与商品同步、用户与用户组管理、分组加价、在线下单、订单状态同步、充值与资金流水、API 对接、邀请码、商品兑换码、日志以及站点基础设置等功能。
 
-## 目录
+系统前台、用户后台和管理后台使用同一套应用，通过普通路径访问，例如 `/login`、`/user/home`、`/admin/home`。安装完成后，安装程序会在项目根目录生成正式的 `index.php` 入口文件。
 
-```text
-default.php                       仅安装前使用的入口
-index.php                         安装完成后自动生成的系统首页/业务入口
-router.php                        PHP 内置服务器路由
-install/index.php                 安装流程（仅允许 default.php 调用）
-install/application.stub          安装后 index.php 的入口模板
-src/                              核心代码、控制器和服务
-views/app.php                     Vue 前台/管理后台单页
-database/schema.sql               MySQL 建表脚本
-database/create_local_user.sql    本地 MySQL 专用账号初始化脚本（root 执行一次）
-scripts/sync_products.php         CLI 商品同步
-scripts/sync_orders.php           CLI 订单状态同步
-start-dev.sh                      Linux 开发服务器启动脚本
-deploy/nginx/                     Linux Nginx + PHP-FPM 配置示例
-storage/                          配置、安装锁和运行日志
-系统对接接口文档.txt              上游接口规范
-支付文档.html                     易支付接口规范
-```
+# 技术栈
 
-## PHP 环境要求
+- 后端：PHP 8.3+，原生 PHP 分层结构
+- 数据库：MySQL 5.6+
+- 数据访问：PDO MySQL
+- 前端：Vue 3
+- Web 服务器：Nginx 或 Apache
+- 必需 PHP 扩展：`curl`、`mbstring`、`openssl`、`pdo_mysql`
+- 推荐运行环境：Linux、PHP-FPM、Nginx
 
-项目仓库不再包含 PHP 运行环境。部署或本地开发前，请自行安装 **PHP 8.3 或更高版本**，并确保 `php` 命令已加入系统 `PATH`。
+# 安装教程
 
-必须启用以下扩展：
+## 1. 准备运行环境
 
-- `curl`
-- `mbstring`
-- `mysqli`
-- `openssl`
-- `pdo_mysql`
+在 Linux 服务器安装并启用：
 
-建议设置：
+- PHP 8.3 或更高版本
+- MySQL 5.6 或更高版本
+- Nginx 或 Apache
+- PHP 扩展：`curl`、`mbstring`、`openssl`、`pdo_mysql`
+
+建议将 PHP 时区设置为：
 
 ```ini
 date.timezone = Asia/Shanghai
 ```
 
-常用命令：
+## 2. 创建数据库
 
-```bash
-php -v
-php -m
-chmod +x ./start-dev.sh
-./start-dev.sh
-```
+在 MySQL 中手动创建一个空数据库和一个专用数据库账号，并授予该账号访问此数据库所需的权限。数据库名称、账号、密码、主机和端口均以安装页面填写的内容为准，不要求使用固定数据库名称。
 
-启动脚本使用服务器上已安装的系统 PHP，不会安装、停止或修改其他项目的 PHP/FPM 进程。可通过 `PORT=3401 ./start-dev.sh` 临时指定监听端口。
-## Web 服务器路由
+建议使用 `utf8mb4` 字符集。
 
-`default.php` 只负责安装前展示安装向导，不处理任何系统页面或 API。安装完成后，安装器会在项目根目录生成 `index.php`，由它处理系统业务请求。
+## 3. 上传并配置站点
 
-浏览器和前端请求只使用普通路径，不暴露入口文件，也不使用 `?route=` 传递页面路由。例如：
+1. 将项目文件上传到网站目录。
+2. 将网站运行目录指向项目根目录。
+3. 配置 PHP-FPM。
+4. 确保 Web 服务运行账号对 `storage/` 和 `runtime/` 目录拥有写入权限。
+5. Nginx 用户可参考项目根目录的 `Nginx.txt` 配置伪静态；Apache 用户需要启用 `mod_rewrite` 并允许读取根目录 `.htaccess`。
 
-```text
-/
-/login
-/register
-/user/home
-/user/settings
-/admin/home
-/admin/users-list
-/api/queryGoods
-```
+伪静态必须将不存在的文件和目录交给根目录入口处理，否则 `/login`、`/user/home`、`/admin/home` 等普通路径在刷新或直接访问时可能返回 404。
 
-生产环境必须把不存在的文件或目录内部重写到根目录 `index.php`，否则直接访问或刷新上述路径会返回 404。
+## 4. 完成网页安装
 
-- Nginx + PHP-FPM：复制并按服务器实际路径修改 `deploy/nginx/sushua.conf.example`，确认 `root` 与 `fastcgi_pass` 指向当前站点和 PHP 8.3 FPM socket，然后只重载该站点所属的 Nginx 配置。
-- Apache：仓库根目录保留 `.htaccess` 兼容配置，需要启用 `mod_rewrite` 并允许目录级重写（`AllowOverride All`）。
-- PHP 内置服务器：使用 `./start-dev.sh`，不要直接省略 `router.php`。安装前仅 `/` 与 `/default.php` 会进入安装入口，其他业务路径返回 404；安装后路由器自动切换到生成的 `index.php`。
+首次访问站点根目录或 `/default.php`，按照安装向导填写数据库、站点和站长账号信息并完成安装。
 
-后台路径可设置为多级路径，例如 `/admin/system`，相应页面和 API 会直接使用 `/admin/system/home`、`/admin/system/api/dashboard` 等地址。
-## 安装
+安装成功后：
 
-1. 确保 `storage/` 可写。
-2. 准备 MySQL 5.6 或更高版本。
-3. 若数据库与应用部署在同一台服务器，推荐先使用 `root` 执行：
+- 根目录会生成正式的 `index.php`。
+- `default.php` 不再负责业务页面分发。
+- 再次访问安装入口只会提示已安装；如确需重新安装，应先按页面提示处理安装锁及相关文件，并提前备份数据。
 
-```sql
-SOURCE database/create_local_user.sql;
-```
+## 5. 安装后检查
 
-该脚本会：
+- 确认首页、登录页、用户后台和管理后台均可正常访问。
+- 在管理后台配置上游货源，并测试连接、余额和商品同步。
+- 检查站点域名、后台路径、支付、短信、邮件和登录安全设置。
+- 配置下文所述的定时任务 API，使商品和进行中订单能够按计划同步。
 
-- 创建数据库：`sushua`
-- 创建本地专用账号：`sushua`
-- 仅授权：`sushua.*`
-- 推荐安装连接参数：`127.0.0.1:3306`
+# 使用手册
 
-4. 启动开发服务器：
+## 管理后台
 
-```bash
-chmod +x ./start-dev.sh
-./start-dev.sh
-```
+站长或管理员登录后，可在管理后台完成以下操作：
 
-5. 浏览器打开：
+- 配置上游货源并同步商品。
+- 管理商品、订单、用户、用户组、余额和资金流水。
+- 配置站点基础信息、登录注册策略、支付、短信、邮件、主题和备案信息。
+- 查看系统日志，并按日志等级或频道筛选。
+- 管理邀请码、充值卡密和商品兑换码。
 
-```text
-http://服务器IP:3400/default.php
-```
+后台路径以安装或系统设置中配置的路径为准；如果配置为多级路径，应完整保留各级路径。
 
-6. 安装向导依次完成：环境检查 → 数据库配置 → 站长账号配置。
-   - 安装器会使用数据库配置页填写的数据库名，不会强制切换到 `sushua`。
-7. 安装成功后会生成：
-   - 根目录 `index.php`（系统首页与业务入口）
-   - `storage/config.php`
-   - `storage/install.lock`
+## 用户后台
 
-`/install` 不能直接进入安装流程，只能由 `default.php` 调用。安装完成后再次访问 `default.php` 只会显示已安装提示，不会跳转安装页。如从旧版本升级且根目录缺少 `index.php`，该提示页会自动根据 `install/application.stub` 补充生成入口文件。需要重新安装时，必须先备份数据并手动删除 `storage/install.lock`，再访问 `default.php`；同时按需删除或重建数据库。
+用户登录后可以查看余额、订单和资金记录，按权限使用 API Key、生成邀请码或商品兑换码，并维护个人资料。具体可用功能由用户身份、用户组和后台单独配置共同决定。
 
-## 手动执行 SQL 时的注意事项
+## 在线下单与查单
 
-如果在 MySQL Workbench 或其他 SQL 编辑器中直接打开 `database/schema.sql`，请先选择数据库，否则会出现 `Error Code: 1046. No database selected`。
-
-推荐做法：
-
-1. 先用 root 执行 `database/create_local_user.sql`；该脚本最后会执行 `USE sushua`。
-2. 在左侧 `SCHEMAS` 中双击 `sushua`，让它变成默认数据库。
-3. 再执行 `database/schema.sql`。
-
-也可以先手动执行：
-
-```sql
-CREATE DATABASE IF NOT EXISTS `sushua` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `sushua`;
-```
-
-MySQL 命令行可以使用辅助脚本：
-
-```sql
-SOURCE database/import_local.sql;
-```
-
-## 推荐数据库连接参数
-
-如果你直接使用仓库中提供的本地专用账号脚本，安装页建议填写：
-
-```text
-数据库主机：127.0.0.1
-数据库端口：3306
-数据库名：sushua
-数据库用户名：sushua
-数据库密码：sushua123
-```
-
-> 生产环境请务必改成你自己的强密码。
-
-## 首次配置建议
-
-1. 在后台“上游配置”填写上游 Base URL、上游 UID、上游 API Key。
-2. 点击“商品同步”，检查商品成本、动态 input 字段和 `sign`。
-3. 在“商品管理”控制是否前台上架、是否允许 API 对接。
-4. 创建用户组并设置加价模式：
-   - `fixed`：按计价单位固定增加额度
-   - `percent`：按比例增加；输入 `0.7` 表示增加 70%，输入 `70` 也会按 70% 处理
-5. 在“系统设置”设置额度名称、前台下单/对接总开关、说说图片来源和验证码策略。
-6. 在“对接设置”设置 API Key 生成条件；只有具备 Agent 策略的用户才会生成/重置 API Key。
-
-## 外部定时任务 API
-
-除 CLI 脚本外，系统也提供两个带系统密钥校验的 HTTP API，便于宝塔计划任务或其他定时服务调用：
-
-```text
-GET/POST /api/cron/products/sync   更新商品数据
-GET/POST /api/cron/orders/sync     更新进行中的订单
-```
-
-管理员登录管理后台后，在“系统设置 -> 定时任务 API”中查看或重置系统密钥。推荐把密钥放在请求头中，避免 URL 被访问日志记录：
-
-```bash
-curl -X POST -H "Authorization: Bearer 您的系统密钥" https://您的域名/api/cron/products/sync
-curl -X POST -H "X-System-Key: 您的系统密钥" https://您的域名/api/cron/orders/sync
-```
-
-仅支持 URL 调用的平台也可使用 `?system_key=您的系统密钥`。重置系统密钥后旧密钥立即失效，请同步更新所有定时任务；接口响应和系统日志均不会回显调用时提交的密钥。
-
-## 易支付
-
-### 商户
-
-在后台配置多个易支付商户：商户名称、网关地址、商户 ID、商户密钥和启用状态。网关地址填写站点根地址，例如 `https://pay.example.com`，系统会请求其 `/mapi.php`。
-
-### 通道
-
-每个支付通道绑定一个易支付商户。比如：
-
-- `wxpay` → 微信 → 1 号商户
-- `alipay` → 支付宝 → 2 号商户
-
-创建充值订单时，系统会按通道绑定的商户发起请求，并使用 MD5 签名。充值回调地址为：
-
-```text
-/internal/recharge/notify
-```
-
-回调只有 `trade_status=TRADE_SUCCESS` 才会到账，重复回调不会重复增加余额。易支付网关下单失败时，充值订单会被标记为 `failed`，不会产生余额流水。
-
-系统内部换算规则固定为：
-
-```text
-网关金额 = 充值额度 / 10000
-```
-
-界面和数据库仍只展示/保存额度。
-
-## 卡密
-
-管理员可批量生成卡密并指定每张卡的额度和使用次数：
-
-- `1`：一次性普通卡密；兑换后变为 `0`
-- `-1`：无限次通兑卡密；每次兑换都记录使用人
-- `N > 1`：最多兑换 N 次，每次兑换减 1
-- `0`：不可兑换
-
-所有兑换均写入卡密兑换记录和用户余额流水。后台删除采用软删除/停用方式，不破坏历史记录。
-
-## 定时任务
-
-### Linux cron
-
-每 5 分钟同步商品：
-
-```cron
-*/5 * * * * cd /path/to/Sushua && /usr/bin/php scripts/sync_products.php >> storage/cron-products.log 2>&1
-```
-
-每分钟同步处理中订单：
-
-```cron
-* * * * * cd /path/to/Sushua && /usr/bin/php scripts/sync_orders.php >> storage/cron-orders.log 2>&1
-```
-
-## SMTP 与短信扩展
-
-### SMTP
-
-在系统设置中填写 SMTP host、port、username、password、encryption、from_email、from_name。发信服务位于：
-
-```text
-src/Services/SmtpMailer.php
-```
-
-### 短信
-
-内置：
-
-- `TencentCloudProvider`：腾讯云短信
-- `AliyunProvider`：阿里云短信
-- `CustomHttpProvider`：自定义 HTTP 短信
-
-统一接口：
-
-```php
-interface ProviderInterface
-{
-    public function send(string $mobile, string $templateCode, array $params = []): array;
-}
-```
-
-新增短信商时，在 `src/Services/Sms/` 实现 `ProviderInterface`，然后在 `SmsManager` 中注册 provider 名称。配置内容保存在 `settings` 表的 `sms_config` JSON 中。
+1. 在在线下单页面选择商品并填写商品要求的参数。
+2. 系统会按照当前用户组计算最终价格。
+3. 提交成功后保存订单号，可通过查单页面查询订单状态和备注信息。
+4. 商品兑换码可在 `/exchange` 页面兑换；兑换成功后，系统会将最近订单号保存到浏览器，方便后续查单。
 
 ## API 对接
 
-所有公开对接接口都使用 `uid` 和 `api_key` 参数，只有满足后台设置、用户组默认值或用户单独覆盖条件时才允许调用。
+具备对接权限的用户可在用户后台生成或重置 API Key，并按照系统提供的接口信息发起请求。API Key 属于敏感凭据，不应写入公开代码、前端页面或公开日志。
 
-兼容路径包括：
+## 定时任务 API 使用手册
 
-```text
-/api/success
-/api/getBalance
-/api/queryGoods
-/api/createOrder
-/api/retryOrder
-/api/refundOrder
-/api/queryOrder
-/api/orderList
-/api/queryFeed
-```
+系统提供两个无需 Shell 的定时任务接口，支持 `GET` 和 `POST` 请求：
 
-同时提供下划线命名兼容路径，例如 `/api/get_balance`、`/api/create_order`。
+| 接口 | 用途 |
+| --- | --- |
+| `/api/cron/products/sync` | 从当前上游同步商品数据 |
+| `/api/cron/orders/sync` | 同步进行中订单的最新状态 |
 
-示例：
+### 获取和重置系统密钥
+
+进入：**管理后台 → 系统设置 → 定时任务 API**。
+
+管理员可在此查看、复制或重置系统密钥。系统密钥重置后，旧密钥立即失效，所有定时任务平台都需要更新为新密钥。
+
+### 推荐调用方式
+
+推荐通过请求头传递密钥，避免密钥出现在 URL 和访问日志中。
+
+使用 `Authorization: Bearer`：
 
 ```bash
-curl "http://服务器IP:3400/api/queryGoods?uid=10000001&api_key=YOUR_KEY"
+curl -X POST \
+  -H "Authorization: Bearer YOUR_SYSTEM_KEY" \
+  https://example.com/api/cron/products/sync
 ```
 
-统一返回结构：
+使用 `X-System-Key`：
 
-```json
-{
-  "code": 200,
-  "msg": "接口调用成功",
-  "data": [],
-  "time": 1720000000
-}
+```bash
+curl -X POST \
+  -H "X-System-Key: YOUR_SYSTEM_KEY" \
+  https://example.com/api/cron/orders/sync
 ```
 
-商品的 `input` 字段由上游声明。系统只会把商品声明的字段传回上游，`qq`、`num`、`feed_id`、`sign` 等标准字段由系统覆盖，避免客户端通过同名参数篡改。
+请将 `https://example.com` 替换为本站实际访问地址，将 `YOUR_SYSTEM_KEY` 替换为管理后台显示的系统密钥。
 
-## 订单规则
+### 仅支持 URL 的定时任务平台
 
-- 商品必须同时满足系统开关、商品启用状态和对应下单方式开关。
-- 订单保存成本、用户花费、利润和订单操作记录。
-- 失败订单最多允许补单一次。页面会显示醒目提示：
-
-> 因忘记开权限或者其他原因导致失败的，可申请补单一次，补单后还失败的将不再支持再次补单。
-
-- 退款会按订单实际用户花费返还额度，并写入余额流水。
-- 管理员“仅退款”只处理站内余额，不向上游发起退单。
-
-## 外网访问说明
-
-默认启动脚本现在监听 `0.0.0.0:3400`，表示允许其他机器访问当前服务器。实际能否从局域网或外网访问，还取决于：
-
-- Linux 防火墙（如 ufw/firewalld）是否放行 `3400` 端口
-- 云服务器安全组是否放行 `3400` 端口
-- 是否使用正确的服务器 IP / 域名访问
-
-访问示例：
+如果定时任务平台无法设置请求头，可以使用查询参数：
 
 ```text
-http://服务器IP:3400/default.php
-http://服务器IP:3400/
+https://example.com/api/cron/products/sync?system_key=YOUR_SYSTEM_KEY
+https://example.com/api/cron/orders/sync?system_key=YOUR_SYSTEM_KEY
 ```
 
-> 注意：`0.0.0.0` 只是监听地址，不是浏览器访问地址。浏览器里请使用实际服务器 IP 或域名。
+系统同时兼容参数名 `key`，但建议统一使用 `system_key`。
 
-## 安全与上线检查
+### 执行频率建议
 
-- 生产环境关闭 `storage/config.php` 中的 debug。
-- `storage/` 不应被 Web 服务器直接下载。
-- 为 `/install` 增加访问限制，安装完成后删除或拦截安装入口。
-- 使用 HTTPS，尤其是登录、API Key、支付回调和 SMTP 配置。
-- 上游和易支付 endpoint 必须使用可信 HTTPS 地址；不要把真实密钥提交到版本库。
-- 定期备份数据库，重点保留 `balance_ledger`、`order_actions`、`card_redemptions`、`system_logs`。
+- 商品同步：可根据上游商品变更频率，每 10 至 60 分钟执行一次。
+- 订单同步：可根据订单量和上游限制，每 1 至 5 分钟执行一次。
+- 不要以过高频率重复请求，以免触发上游接口限流或增加服务器负载。
 
-## 当前验证方式
+### 返回与排查
 
-当前仓库已完成 PHP 语法级静态检查。安装并配置系统 PHP 后，可继续做端到端测试：注册、管理员强制验证码、商品同步、普通/对接下单、订单同步/补单/退款、卡密兑换和易支付回调。
+- 密钥正确且任务执行成功时，接口返回成功状态、任务类型、执行结果和执行时间。
+- 密钥缺失或错误时返回 HTTP 401。
+- 请求方法不是 `GET` 或 `POST` 时返回 HTTP 405。
+- 执行异常时返回 HTTP 500，并记录到系统日志的 `scheduled_task` 频道。
+
+定时任务调用失败时，应依次检查站点地址、伪静态、HTTPS、系统密钥、服务器网络、上游配置和系统日志。

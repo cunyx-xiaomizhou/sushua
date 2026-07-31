@@ -140,10 +140,6 @@ __SITE_FAVICON_TAG__
               <small class="muted">总下单数</small>
               <strong>{{ money(homeStats.total_quantity || 0) }}</strong>
             </div>
-            <div class="hero-side-item">
-              <small class="muted">默认额度单位</small>
-              <strong>{{ currency }}</strong>
-            </div>
           </div>
         </div>
       </div>
@@ -278,7 +274,6 @@ __SITE_FAVICON_TAG__
         </div>
         <div v-else class="auth-box">
           <h3>统一登录</h3>
-          <p class="panel-sub">普通用户、管理员、站长共用同一登录页；登录时强制要求图片验证码。</p>
           <div class="form-grid">
             <div class="field full">
               <label>用户名</label>
@@ -325,7 +320,6 @@ __SITE_FAVICON_TAG__
         </div>
         <div v-else class="auth-box">
           <h3>注册账号</h3>
-          <p class="panel-sub">注册页与首页分离；默认收集用户名、昵称、QQ 与密码，其他字段按后台配置决定是否显示。</p>
           <div class="form-grid">
             <div class="field">
               <label>用户名</label>
@@ -367,7 +361,6 @@ __SITE_FAVICON_TAG__
               </div>
             </div>
           </div>
-          <div class="auth-footnote">注册成功后会自动进入用户后台，并默认生成一个 20 位邀请码。</div>
           <div class="login-dual-actions">
             <button class="btn primary" @click="submitRegister">注册并进入用户后台</button>
             <a class="btn ghost" :href="routeUrl('/login')">已有账号？去登录</a>
@@ -382,7 +375,6 @@ __SITE_FAVICON_TAG__
           <div class="page-head">
             <div>
               <h2>商品兑换码兑换</h2>
-              <p>无需登录即可兑换商品兑换码。兑换成功后，系统会将最近订单写入浏览器，方便后续查单。</p>
             </div>
             <div class="inline-actions">
               <button class="btn ghost" @click="loadExchangeOrders(true)">刷新最近兑换订单</button>
@@ -451,8 +443,7 @@ __SITE_FAVICON_TAG__
           <div class="panel">
             <h3>说明</h3>
             <div class="desc-list">
-              <div class="desc-item">兑换无需登录，成功后会将系统订单号保存到 Cookie 中，默认保存 {{ settings.exchange_code_cookie_days || 60 }} 天。</div>
-              <div class="desc-item">兑换码对应的商品费用会在兑换成功后，从生成该兑换码的用户余额中扣除。</div>
+              <div class="desc-item">在兑换前，请确定已经开启了相应权限</div>
               <div class="desc-item">若商品需要额外参数，请按页面提示填写；系统会按上游商品输入项进行校验。</div>
             </div>
           </div>
@@ -525,17 +516,16 @@ __SITE_FAVICON_TAG__
                 <div class="inline-actions section-gap">
                   <button class="btn primary" @click="resetOwnApiKey" :disabled="!(profile.api_access && profile.api_access.can_generate_key)">{{ profile.user && profile.user.api_key ? '重置 API Key' : '生成 API Key' }}</button>
                 </div>
-                <div class="auth-footnote">API Key 的生成条件由系统统一控制；是否最终允许对接还会叠加用户组与后台单独设置。</div>
               </div>
               <div class="panel">
                 <h3>快捷入口</h3>
                 <div class="quick-grid">
-                  <button class="quick-card" @click="switchUserTab('order')"><h3>在线下单</h3><p>按用户价格快速下单。</p></button>
-                  <button class="quick-card" @click="switchUserTab('orders')"><h3>查单系统</h3><p>实时同步最新状态与备注。</p></button>
-                  <button class="quick-card" @click="switchUserTab('recharge')"><h3>额度充值</h3><p>在线充值 / 卡密充值。</p></button>
-                  <button class="quick-card" @click="switchUserTab('invites')"><h3>邀请管理</h3><p>查看邀请码与邀请记录。</p></button>
-                  <button class="quick-card" @click="switchUserTab('groups')"><h3>代理等级</h3><p>查看所有用户组与升级条件。</p></button>
-                  <button class="quick-card" @click="switchUserTab('profile')"><h3>个人资料</h3><p>编辑资料并重置密码。</p></button>
+                  <button class="quick-card" @click="switchUserTab('order')"><h3>在线下单</h3></button>
+                  <button class="quick-card" @click="switchUserTab('orders')"><h3>查单系统</h3></button>
+                  <button class="quick-card" @click="switchUserTab('recharge')"><h3>额度充值</h3></button>
+                  <button class="quick-card" @click="switchUserTab('invites')"><h3>邀请管理</h3></button>
+                  <button class="quick-card" @click="switchUserTab('groups')"><h3>代理等级</h3></button>
+                  <button class="quick-card" @click="switchUserTab('profile')"><h3>个人资料</h3></button>
                 </div>
               </div>
             </div>
@@ -545,7 +535,6 @@ __SITE_FAVICON_TAG__
             <div class="page-head">
               <div>
                 <h2>在线下单</h2>
-                <p>前台仅保留在线下单。选择商品后，系统会按你的当前用户组实时计算最终价格。</p>
               </div>
             </div>
             <div class="section-stack">
@@ -796,7 +785,7 @@ __SITE_FAVICON_TAG__
                 <div class="desc-list">
                   <div class="desc-item">生成兑换码只收取后台设置的生成手续费；兑换后订单费用按兑换码创建时的商品价格快照从生成者账户扣除。</div>
                   <div class="desc-item">兑换码长度至少 48 位，支持系统前缀、随机字符串和用户 UID 组合。</div>
-                  <div class="desc-item">兑换者打开 /exchange 页面即可兑换，不要求登录；兑换成功后订单号会保存到浏览器 Cookie。</div>
+                  <div class="desc-item">兑换者打开 <a :href="exchangePageUrl" target="_blank" rel="noopener">{{ exchangePageUrl }}</a> 即可兑换</div>
                 </div>
               </div>
             </div>
@@ -1167,12 +1156,12 @@ __SITE_FAVICON_TAG__
               <div class="panel">
                 <h3>快捷入口</h3>
                 <div class="quick-grid">
-                  <button class="quick-card" @click="switchAdminTab('products-list')"><h3>商品管理</h3><p>同步商品并控制前台上架 / 对接状态。</p></button>
-                  <button class="quick-card" @click="switchAdminTab('users-list')"><h3>用户管理</h3><p>用户、余额、角色、封禁与 API 覆盖。</p></button>
-                  <button class="quick-card" @click="switchAdminTab('orders-list')"><h3>订单管理</h3><p>同步速刷订单、补单、退单与仅退款。</p></button>
-                  <button class="quick-card" @click="switchAdminTab('api-conditions')"><h3>对接设置</h3><p>对接条件、上游信息与密钥管理。</p></button>
-                  <button class="quick-card" @click="switchAdminTab('cards-generate')"><h3>充值设置</h3><p>卡密、易支付通道与充值订单。</p></button>
-                  <button class="quick-card" @click="switchAdminTab('settings-basic')"><h3>系统设置</h3><p>SEO、短信、SMTP、登录与邀请码规则。</p></button>
+                  <button class="quick-card" @click="switchAdminTab('products-list')"><h3>商品管理</h3></button>
+                  <button class="quick-card" @click="switchAdminTab('users-list')"><h3>用户管理</h3></button>
+                  <button class="quick-card" @click="switchAdminTab('orders-list')"><h3>订单管理</h3></button>
+                  <button class="quick-card" @click="switchAdminTab('api-conditions')"><h3>对接设置</h3></button>
+                  <button class="quick-card" @click="switchAdminTab('cards-generate')"><h3>充值设置</h3></button>
+                  <button class="quick-card" @click="switchAdminTab('settings-basic')"><h3>系统设置</h3></button>
                 </div>
               </div>
             </div>
@@ -1434,7 +1423,7 @@ __SITE_FAVICON_TAG__
             </div>
             <div v-if="adminTab === 'upstream-manage'" class="panel">
               <div class="action-row">
-                <div><h3>上游状态与配置</h3><p class="panel-sub">余额取自当前默认上游；获取失败时会显示具体原因，不影响继续编辑配置。</p></div>
+                <div><h3>上游状态与配置</h3></div>
                 <button class="btn ghost" @click="refreshUpstreamBalance(false)">刷新上游余额</button>
               </div>
               <div class="stats-grid compact-stats section-gap">
@@ -1451,7 +1440,6 @@ __SITE_FAVICON_TAG__
                 <div class="field"><label>启用</label><select v-model.number="upstreamForm.enabled"><option :value="1">是</option><option :value="0">否</option></select></div>
                 <div class="field"><label>设为默认</label><select v-model.number="upstreamForm.is_default"><option :value="1">是</option><option :value="0">否</option></select></div>
               </div>
-              <div class="auth-footnote">保存前系统会请求上游 <span class="code-inline">/api/success</span> 并校验 <span class="code-inline">data.allow === true</span>，否则阻止保存。</div>
               <div class="inline-actions"><button class="btn primary" @click="saveUpstream">保存上游配置</button><button class="btn ghost" @click="resetUpstreamForm">清空表单</button></div>
               <div class="divider"></div>
               <div class="action-row"><h4>上游列表</h4><button class="btn ghost" @click="loadAdminUpstream(true)">刷新列表</button></div>
@@ -1468,7 +1456,6 @@ __SITE_FAVICON_TAG__
             <div class="page-head">
               <div>
                 <h2>{{ {'cards-generate':'卡密生成','cards-list':'卡密列表','payments-merchants':'易支付商户','payments-channels':'支付通道','recharge-orders':'充值订单'}[adminTab] }}</h2>
-                <p>每个菜单只显示当前功能，避免不同充值配置混在同一个页面。</p>
               </div>
             </div>
             <div v-if="adminTab === 'cards-generate'" class="panel">
@@ -1530,14 +1517,12 @@ __SITE_FAVICON_TAG__
                   <div class="field"><label>站点 Logo</label><input v-model.trim="settingsForm.site_logo" placeholder="logo URL"></div>
                   <div class="field"><label>用户交流群 QQ</label><input v-model.trim="settingsForm.community_group_qq" placeholder="例如 1081888821"></div>
                   <div class="field"><label>售后群 QQ</label><input v-model.trim="settingsForm.support_group_qq" placeholder="例如 1081888821"></div>
-                  <div class="field"><label>站长反馈群 QQ</label><input v-model.trim="settingsForm.owner_feedback_group_qq" placeholder="例如 143805881"></div>
                   <div class="field full">
                     <label>系统站长交流群</label>
                     <div class="inline-actions">
-                      <span class="code-inline">{{ settingsForm.owner_feedback_group_qq || '143805881' }}</span>
+                      <span class="code-inline">{{ ownerFeedbackGroupQq }}</span>
                       <button type="button" class="btn ghost" @click="openGroup('owner_feedback')">加入站长交流群</button>
                     </div>
-                    <div class="hint">仅管理后台可见，用于站长反馈系统问题。</div>
                   </div>
                   <div class="field"><label>ICP备案号</label><input v-model.trim="settingsForm.icp_beian_no" placeholder="例如 粤ICP备12345678号"></div>
                   <div class="field"><label>网安备案号</label><input v-model.trim="settingsForm.public_security_beian_no" placeholder="例如 粤公网安备 44000000000000号"></div>
@@ -1683,7 +1668,7 @@ __SITE_FAVICON_TAG__
                 <div class="action-row">
                   <div>
                     <h3>定时任务 HTTP API</h3>
-                    <p class="panel-sub">不依赖 Shell，可由宝塔计划任务、监控平台或其他定时服务调用。</p>
+                    <p class="panel-sub">可由宝塔计划任务、监控平台或其他定时服务调用。</p>
                   </div>
                   <button class="btn danger" @click="resetScheduledTaskKey">重置系统密钥</button>
                 </div>
@@ -1718,7 +1703,7 @@ __SITE_FAVICON_TAG__
                 <div class="card-title">
                   <div>
                     <h3>界面主题</h3>
-                    <p class="panel-sub">默认采用纯色蓝系风格，不使用渐变。支持在线调整并导入 / 导出 JSON 主题文件。</p>
+                    <p class="panel-sub">支持在线调整并导入 / 导出 JSON 主题文件。</p>
                   </div>
                   <div class="theme-actions">
                     <button class="btn ghost" @click="exportTheme">导出主题</button>
@@ -1998,7 +1983,7 @@ function defaultThemeConfig() {
 }
 function emptySettingsForm() {
   return {
-    site_name: '', site_keywords: '', site_description: '', site_favicon: '', site_logo: '', seo_footer: '', currency_name: '额度', admin_path: '/admin', community_group_qq: '', support_group_qq: '', owner_feedback_group_qq: '143805881', icp_beian_no: '', public_security_beian_no: '',
+    site_name: '', site_keywords: '', site_description: '', site_favicon: '', site_logo: '', seo_footer: '', currency_name: '额度', admin_path: '/admin', community_group_qq: '', support_group_qq: '', icp_beian_no: '', public_security_beian_no: '',
     frontend_order_enabled: 1, api_order_enabled: 1, feed_image_mode: 'self_proxy',
     register_need_email: 0, register_need_mobile: 0, register_need_image_captcha: 1, register_need_geetest: 0, register_need_sms_code: 0, register_need_email_code: 0,
     login_need_sms: 0, login_need_email: 0, login_need_geetest: 0, login_need_image_captcha: 1,
@@ -2070,6 +2055,7 @@ function formToSettingsPayload(form) {
   delete payload.sms_headers_rows;
   delete payload.sms_query_rows;
   delete payload.sms_body_rows;
+  delete payload.owner_feedback_group_qq;
   payload.invite_code_price_rules.length_rules = (payload.invite_code_price_rules.length_rules || []).map(function (item) {
     return { length: String(item.length || '6').trim(), price: Number(item.price || 0) };
   });
@@ -2096,6 +2082,7 @@ const app = Vue.createApp({
       currency: BOOT.currency || '额度',
       adminUrl: BOOT.adminUrl || BOOT.adminPath || '/admin',
       baseUrl: BOOT.baseUrl || '',
+      ownerFeedbackGroupQq: '143805881',
       currentPath: BOOT.currentPath || '/',
       user: BOOT.user || null,
       loading: false,
@@ -2148,6 +2135,14 @@ const app = Vue.createApp({
   },
   computed: {
     captchaUrl: function () { return this.routeUrl('/captcha/image?_=' + this.captchaVersion); },
+    exchangePageUrl: function () {
+      const path = this.routeUrl('/exchange');
+      try {
+        return new URL(path, window.location.href).href;
+      } catch (error) {
+        return path;
+      }
+    },
     canAccessAdmin: function () {
       if (!this.user) return false;
       return ['owner', 'admin'].includes(String(this.user.account_role || ''));
@@ -2497,7 +2492,7 @@ const app = Vue.createApp({
     openGroup: function (kind) {
       const groupMap = {
         support: this.settings.support_group_qq || '',
-        owner_feedback: (this.settingsForm && this.settingsForm.owner_feedback_group_qq) || '143805881',
+        owner_feedback: this.ownerFeedbackGroupQq,
         community: this.settings.community_group_qq || ''
       };
       const groupCode = String(groupMap[kind] || groupMap.community || '').trim();

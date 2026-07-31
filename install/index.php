@@ -234,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="field"><label>数据库用户名</label><input name="db_user" value="<?= htmlspecialchars((string) ($_POST['db_user'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="请输入数据库用户名" required></div>
                     <div class="field"><label>数据库密码</label><input type="password" name="db_password"></div>
                 </div>
-                <div class="actions"><span class="muted">支持 MySQL 5.6+，同机部署建议使用 127.0.0.1:3306，可先执行 database/create_local_user.sql 创建专用账号。</span><button class="btn primary">导入数据库并继续</button></div>
+                <div class="actions"><button class="btn primary">导入数据库并继续</button></div>
             </form>
         <?php elseif($step===3): ?>
             <form method="post">
