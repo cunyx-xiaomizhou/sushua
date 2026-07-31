@@ -53,7 +53,6 @@ CREATE TABLE IF NOT EXISTS users (
   strategy_agent TINYINT(1) NOT NULL DEFAULT 0,
   api_key VARCHAR(64) NULL,
   api_key_generated_at DATETIME NULL,
-  api_enabled_override TINYINT NULL DEFAULT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   ban_until DATETIME NULL,
   ban_reason VARCHAR(255) NULL,

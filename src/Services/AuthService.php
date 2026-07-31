@@ -143,7 +143,7 @@ final class AuthService
             }
 
             $uid = $this->generateUid();
-            $apiKey = $strategyAgent ? str_random(40) : null;
+            $apiKey = null;
             $stmt = $this->pdo->prepare('INSERT INTO users (uid, username, nickname, qq, email, mobile, avatar, password_hash, user_group_id, account_role, strategy_user, strategy_agent, api_key, api_key_generated_at, status, balance, total_recharge, total_consume, invite_count, inviter_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?, ?)');
             $stmt->execute([
                 $uid,
@@ -221,13 +221,6 @@ final class AuthService
         $strategyAgent = $flags['strategy_agent'];
         $role = (string) ($data['account_role'] ?? 'member');
         $balance = (int) ($data['balance'] ?? 0);
-        $apiOverride = null;
-        if (array_key_exists('api_enabled_override', $data) && $data['api_enabled_override'] !== '' && $data['api_enabled_override'] !== null) {
-            if (!in_array((string) $data['api_enabled_override'], ['0', '1'], true)) {
-                throw new RuntimeException('单独对接覆盖设置不合法');
-            }
-            $apiOverride = (int) $data['api_enabled_override'];
-        }
         $banUntil = trim((string) ($data['ban_until'] ?? ''));
         $banReason = trim((string) ($data['ban_reason'] ?? ''));
         $allowedRoles = ['member', 'agent', 'admin', 'owner'];
@@ -250,11 +243,6 @@ final class AuthService
         }
         if ($balance < 0) {
             throw new RuntimeException('余额不能为负数');
-        }
-        if (in_array($role, ['admin', 'owner'], true)) {
-            $strategyUser = 0;
-            $strategyAgent = 0;
-            $apiOverride = null;
         }
         if ($role !== 'member' && $role !== 'agent' && $actor['account_role'] !== 'owner') {
             throw new RuntimeException('只有站长才能创建或修改后台账号');
@@ -299,7 +287,7 @@ final class AuthService
             }
             $this->pdo->beginTransaction();
             try {
-                $stmt = $this->pdo->prepare('INSERT INTO users (uid, username, nickname, qq, email, mobile, avatar, password_hash, user_group_id, account_role, strategy_user, strategy_agent, api_key, api_key_generated_at, api_enabled_override, status, balance, total_recharge, total_consume, invite_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)');
+                $stmt = $this->pdo->prepare('INSERT INTO users (uid, username, nickname, qq, email, mobile, avatar, password_hash, user_group_id, account_role, strategy_user, strategy_agent, api_key, api_key_generated_at, status, balance, total_recharge, total_consume, invite_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, ?, ?)');
                 $stmt->execute([
                     $this->generateUid(),
                     $username,
@@ -313,9 +301,8 @@ final class AuthService
                     $role,
                     $strategyUser,
                     $strategyAgent,
-                    $strategyAgent ? str_random(40) : null,
-                    $strategyAgent ? now() : null,
-                    $apiOverride,
+                    null,
+                    null,
                     $status,
                     now(),
                     now(),
@@ -336,23 +323,8 @@ final class AuthService
         } else {
             $this->pdo->beginTransaction();
             try {
-                $sets = ['username = ?', 'nickname = ?', 'qq = ?', 'email = ?', 'mobile = ?', 'avatar = ?', 'user_group_id = ?', 'strategy_user = ?', 'strategy_agent = ?', 'api_enabled_override = ?', 'status = ?', 'ban_until = ?', 'ban_reason = ?', 'updated_at = ?'];
-                $params = [$username, $nickname, $qq, $email ?: null, $mobile ?: null, $avatarValue, $groupId, $strategyUser, $strategyAgent, $apiOverride, $status, $banUntil !== '' ? $banUntil : null, $banReason !== '' ? $banReason : null, now()];
-                if ($strategyAgent === 0) {
-                    $sets[] = 'api_key = ?';
-                    $params[] = null;
-                    $sets[] = 'api_key_generated_at = ?';
-                    $params[] = null;
-                } else {
-                    $keyStmt = $this->pdo->prepare('SELECT api_key FROM users WHERE id = ? LIMIT 1 FOR UPDATE');
-                    $keyStmt->execute([$id]);
-                    if (!$keyStmt->fetchColumn()) {
-                        $sets[] = 'api_key = ?';
-                        $params[] = str_random(40);
-                        $sets[] = 'api_key_generated_at = ?';
-                        $params[] = now();
-                    }
-                }
+                $sets = ['username = ?', 'nickname = ?', 'qq = ?', 'email = ?', 'mobile = ?', 'avatar = ?', 'user_group_id = ?', 'strategy_user = ?', 'strategy_agent = ?', 'status = ?', 'ban_until = ?', 'ban_reason = ?', 'updated_at = ?'];
+                $params = [$username, $nickname, $qq, $email ?: null, $mobile ?: null, $avatarValue, $groupId, $strategyUser, $strategyAgent, $status, $banUntil !== '' ? $banUntil : null, $banReason !== '' ? $banReason : null, now()];
                 if ($actor['account_role'] === 'owner' && (string) ($target['account_role'] ?? '') !== 'owner') {
                     $sets[] = 'account_role = ?';
                     $params[] = $role;
@@ -389,7 +361,6 @@ final class AuthService
                     'actor_id' => (int) $actor['id'],
                     'user_id' => $id,
                     'connect_policy' => $flags['connect_policy'],
-                    'api_enabled_override' => $apiOverride,
                 ], (int) $actor['id']);
             } catch (\Throwable $e) {
                 if ($this->pdo->inTransaction()) {
@@ -566,7 +537,7 @@ final class AuthService
 
     private function sanitizeUser(array $user): array
     {
-        unset($user['password_hash']);
+        unset($user['password_hash'], $user['api_enabled_override']);
         $user['strategy_user'] = (int) ($user['strategy_user'] ?? 0);
         $user['strategy_agent'] = (int) ($user['strategy_agent'] ?? 0);
         $user['balance'] = (int) ($user['balance'] ?? 0);

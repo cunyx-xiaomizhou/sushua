@@ -35,7 +35,6 @@ final class ApiAccessService
         };
 
         $groupAllow = (int) ($group['allow_api_default'] ?? 0) === 1;
-        $override = $user['api_enabled_override'] ?? null;
         $policy = $this->connectPolicy($user);
 
         $policyAllow = match ($policy) {
@@ -43,9 +42,6 @@ final class ApiAccessService
             'user' => false,
             default => $groupAllow,
         };
-        if ($override !== null && $override !== '') {
-            $policyAllow = (int) $override === 1;
-        }
 
         $accountActive = (($user['status'] ?? 'active') === 'active');
         $canGenerateKey = $conditionPassed && $accountActive;
@@ -60,7 +56,6 @@ final class ApiAccessService
             'condition_current' => $current,
             'condition_passed' => $conditionPassed,
             'group_default' => $groupAllow,
-            'override' => $override,
             'connect_policy' => $policy,
             'is_agent' => $policy === 'agent',
         ];

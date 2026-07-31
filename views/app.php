@@ -1218,8 +1218,7 @@ __SITE_FAVICON_TAG__
                   <div class="field"><label>所属用户组</label><select v-model.number="userForm.user_group_id"><option v-for="group in adminState.groups" :key="group.id" :value="Number(group.id)">{{ group.name }}</option></select></div>
                   <div class="field"><label>账号状态</label><select v-model="userForm.status"><option value="active">正常</option><option value="banned">封禁</option></select></div>
                   <div class="field"><label>角色</label><select v-model="userForm.account_role" :disabled="userForm.account_role === 'owner'"><option v-if="userForm.account_role === 'owner'" value="owner">Owner（锁定）</option><option value="member">User</option><option value="agent">Agent</option><option v-if="isOwner" value="admin">Admin</option></select><div v-if="userForm.account_role === 'owner'" class="tiny">站长身份已锁定，前台与后台都不能在这里改成其他身份，也不能把其他用户改成站长。</div></div>
-                  <div class="field"><label>对接策略</label><select v-model="userForm.connect_policy"><option value="default">default（跟随用户组）</option><option value="user">User（不允许对接）</option><option value="agent">Agent（允许对接）</option></select></div>
-                  <div class="field"><label>单独对接覆盖</label><select v-model="userForm.api_enabled_override"><option value="">跟随策略</option><option value="1">单独允许</option><option value="0">单独禁止</option></select></div>
+                  <div class="field"><label>对接策略</label><select v-model="userForm.connect_policy"><option value="default">跟随用户组</option><option value="agent">允许对接</option><option value="user">禁止对接</option></select><div class="tiny">选择“跟随用户组”时，是否允许对接由所属用户组的设置决定。</div></div>
                   <div class="field full" v-if="userForm.id">
                     <label>只读信息</label>
                     <div class="kv-box">
@@ -1792,7 +1791,7 @@ function emptyGroupForm() {
   return { id: 0, group_code: '', name: '', description: '', threshold_mode: 'none', threshold_value: 0, downgrade_on_balance: 0, markup_mode: 'fixed', markup_value: 0, recharge_bonus_rate: 1, allow_api_default: 0, sort_order: 0 };
 }
 function emptyUserForm() {
-  return { id: 0, username: '', nickname: '', qq: '', email: '', mobile: '', password: '', balance: 0, user_group_id: 0, status: 'active', account_role: 'member', connect_policy: 'default', api_enabled_override: '', created_at: '', last_login_at: '', last_login_ip: '', invite_count: 0 };
+  return { id: 0, username: '', nickname: '', qq: '', email: '', mobile: '', password: '', balance: 0, user_group_id: 0, status: 'active', account_role: 'member', connect_policy: 'default', created_at: '', last_login_at: '', last_login_ip: '', invite_count: 0 };
 }
 function emptyUpstreamForm() {
   return { id: 0, name: '', base_url: '', upstream_uid: 0, upstream_api_key: '', enabled: 1, is_default: 0 };
@@ -3125,7 +3124,7 @@ const app = Vue.createApp({
       return rows;
     },
     editUser: function (row) {
-      this.userForm = Object.assign(emptyUserForm(), clone(row), { password: '', user_group_id: Number(row.user_group_id || 0), api_enabled_override: row.api_enabled_override === null || row.api_enabled_override === '' ? '' : String(row.api_enabled_override), connect_policy: this.connectPolicyOf(row) });
+      this.userForm = Object.assign(emptyUserForm(), clone(row), { password: '', user_group_id: Number(row.user_group_id || 0), connect_policy: this.connectPolicyOf(row) });
       this.switchAdminTab('users-create');
     },
     resetUserForm: function () {
@@ -3140,7 +3139,7 @@ const app = Vue.createApp({
       return 'default';
     },
     connectPolicyLabel: function (value) {
-      return ({ default: 'default（跟随用户组）', user: 'User（禁止对接）', agent: 'Agent（允许对接）' })[String(value || 'default')] || 'default';
+      return ({ default: '跟随用户组', user: '禁止对接', agent: '允许对接' })[String(value || 'default')] || '跟随用户组';
     },
     apiConditionText: function (apiAccess) {
       if (!apiAccess) return '-';
@@ -3154,7 +3153,6 @@ const app = Vue.createApp({
     },
     async saveAdminUser() {
       const payload = clone(this.userForm);
-      if (payload.api_enabled_override === '') delete payload.api_enabled_override;
       await this.fetchJson(this.adminUrl + '/api/users/save', { method: 'POST', body: payload, loadingText: '正在保存用户...' });
       this.notify('用户信息已保存', 'success');
       this.resetUserForm();
