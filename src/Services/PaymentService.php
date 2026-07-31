@@ -142,7 +142,7 @@ final class PaymentService
             'type' => $channel['pay_type'],
             'out_trade_no' => $orderNo,
             'notify_url' => $this->baseUrl() . '/internal/recharge/notify',
-            'return_url' => $this->baseUrl() . '/user?tab=recharge',
+            'return_url' => $this->baseUrl() . '/user/recharge',
             'name' => '额度充值',
             'money' => $money,
             'clientip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',

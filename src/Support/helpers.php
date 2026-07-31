@@ -69,7 +69,7 @@ function application_base_path(): string
     $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
     $scriptPath = parse_url($scriptName, PHP_URL_PATH) ?: '';
     $scriptPath = '/' . trim((string) $scriptPath, '/');
-    foreach (['/default.php', '/router.php'] as $entryPoint) {
+    foreach (['/index.php', '/default.php', '/router.php', '/install/index.php'] as $entryPoint) {
         if ($scriptPath === $entryPoint) {
             return $basePath = '';
         }
@@ -84,37 +84,20 @@ function application_base_path(): string
 
 function request_path(): string
 {
-    $route = $_GET['route'] ?? null;
-    $hasExplicitRoute = is_string($route) && trim($route) !== '';
-    $source = $hasExplicitRoute ? $route : (string) ($_SERVER['REQUEST_URI'] ?? '/');
+    $source = (string) ($_SERVER['REQUEST_URI'] ?? '/');
     $path = parse_url($source, PHP_URL_PATH) ?: '/';
     $path = '/' . trim((string) $path, '/');
 
-    if (!$hasExplicitRoute) {
-        $basePath = application_base_path();
-        if ($basePath !== '' && ($path === $basePath || str_starts_with($path, $basePath . '/'))) {
-            $path = substr($path, strlen($basePath)) ?: '/';
-        }
+    $basePath = application_base_path();
+    if ($basePath !== '' && ($path === $basePath || str_starts_with($path, $basePath . '/'))) {
+        $path = substr($path, strlen($basePath)) ?: '/';
     }
 
-    if ($path === '/default.php' || $path === '/router.php') {
+    if ($path === '/index.php') {
         return '/';
     }
-    return '/' . trim($path, '/');
-}
 
-function front_controller_url(): string
-{
-    $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-    $basePath = application_base_path();
-    if ($scriptName !== '' && preg_match('#/default\.php$#', $scriptName) === 1) {
-        $scriptPath = '/' . ltrim($scriptName, '/');
-        if ($basePath !== '' && ($scriptPath === '/default.php' || !str_starts_with($scriptPath, $basePath . '/'))) {
-            return $basePath . '/default.php';
-        }
-        return $scriptPath;
-    }
-    return ($basePath ?: '') . '/default.php';
+    return '/' . trim($path, '/');
 }
 
 function public_url(string $path = ''): string
@@ -130,8 +113,21 @@ function route_url(string $path = '/'): string
     if ($source !== '' && (preg_match('#^(?:https?:)?//#i', $source) === 1 || str_starts_with($source, 'mailto:'))) {
         return $source;
     }
-    $normalized = '/' . trim((string) (parse_url($source, PHP_URL_PATH) ?: '/'), '/');
-    return front_controller_url() . '?route=' . rawurlencode($normalized);
+
+    $parts = parse_url($source);
+    $routePath = is_array($parts) ? (string) ($parts['path'] ?? '/') : '/';
+    $normalized = '/' . trim($routePath, '/');
+    $basePath = application_base_path();
+    $url = ($basePath ?: '') . ($normalized === '/' ? '/' : $normalized);
+
+    if (is_array($parts) && isset($parts['query']) && $parts['query'] !== '') {
+        $url .= '?' . $parts['query'];
+    }
+    if (is_array($parts) && isset($parts['fragment']) && $parts['fragment'] !== '') {
+        $url .= '#' . $parts['fragment'];
+    }
+
+    return $url;
 }
 
 function array_get(array $array, string $key, mixed $default = null): mixed

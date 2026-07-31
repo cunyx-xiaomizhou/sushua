@@ -1,21 +1,44 @@
 <?php
 declare(strict_types=1);
 
+if (!defined('SUSHUA_INSTALL_GATEWAY') || SUSHUA_INSTALL_GATEWAY !== true) {
+    $scriptName = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '/install/index.php'));
+    $basePath = preg_replace('#/install(?:/index\.php)?$#', '', $scriptName) ?? '';
+    header('Location: ' . rtrim($basePath, '/') . '/default.php');
+    exit;
+}
+
 require_once dirname(__DIR__) . '/src/bootstrap.php';
 
 use Sushua\Core\Config;
-use Sushua\Core\Response;
 use Sushua\Services\SettingsService;
 
 if (Config::isInstalled()) {
-    Response::redirect(route_url('/'));
+    throw new RuntimeException('系统已安装，安装入口已关闭');
 }
+
+$writeApplicationEntry = static function (): void {
+    $template = __DIR__ . '/application.stub';
+    $target = dirname(__DIR__) . '/index.php';
+    $contents = file_get_contents($template);
+    if ($contents === false || trim($contents) === '') {
+        throw new RuntimeException('无法读取系统首页入口模板：' . $template);
+    }
+    if (file_exists($target) ? !is_writable($target) : !is_writable(dirname($target))) {
+        throw new RuntimeException('项目根目录不可写，无法生成 index.php');
+    }
+    if (file_put_contents($target, $contents, LOCK_EX) === false) {
+        throw new RuntimeException('生成系统首页 index.php 失败');
+    }
+    @chmod($target, 0644);
+};
 
 $environmentChecks = [
     'php' => version_compare(PHP_VERSION, '8.3.0', '>='),
     'pdo_mysql' => extension_loaded('pdo_mysql'),
     'curl' => extension_loaded('curl'),
     'storage' => is_writable(storage_path()),
+    'entry' => is_readable(__DIR__ . '/application.stub') && (file_exists(dirname(__DIR__) . '/index.php') ? is_writable(dirname(__DIR__) . '/index.php') : is_writable(dirname(__DIR__))),
 ];
 
 $assertEnvironment = static function () use ($environmentChecks): void {
@@ -30,6 +53,9 @@ $assertEnvironment = static function () use ($environmentChecks): void {
     }
     if (!$environmentChecks['storage']) {
         throw new RuntimeException('storage 目录不可写，请先修复权限');
+    }
+    if (!$environmentChecks['entry']) {
+        throw new RuntimeException('项目根目录不可写或系统首页入口模板不可读，无法生成 index.php');
     }
 };
 
@@ -124,6 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('后台路径可包含多级目录，每段只能使用 1-40 位英文、数字、下划线或中划线');
             }
 
+            $writeApplicationEntry();
             $config['installed'] = true;
             file_put_contents(storage_path('config.php'), '<?php return ' . var_export($config, true) . ';');
             @unlink($pending);
@@ -190,6 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div><span>PDO MySQL</span><strong class="<?= $environmentChecks['pdo_mysql']?'ok':'bad' ?>"><?= $environmentChecks['pdo_mysql']?'可用':'缺少' ?></strong></div>
                 <div><span>CURL</span><strong class="<?= $environmentChecks['curl']?'ok':'bad' ?>"><?= $environmentChecks['curl']?'可用':'缺少' ?></strong></div>
                 <div><span>storage 可写</span><strong class="<?= $environmentChecks['storage']?'ok':'bad' ?>"><?= $environmentChecks['storage']?'可用':'不可写' ?></strong></div>
+                <div><span>系统首页入口</span><strong class="<?= $environmentChecks['entry']?'ok':'bad' ?>"><?= $environmentChecks['entry']?'可生成':'不可生成' ?></strong></div>
             </div>
             <form method="post">
                 <input type="hidden" name="step" value="2">
@@ -222,6 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         <?php else: ?>
             <div class="check">
+                <div><span>系统首页</span><strong class="ok">根目录 index.php 已生成</strong></div>
                 <div><span>安装锁</span><strong class="ok">已生成</strong></div>
                 <div><span>站点名称</span><strong><?= htmlspecialchars((string) (require storage_path('config.php'))['app']['name'], ENT_QUOTES, 'UTF-8') ?></strong></div>
             </div>

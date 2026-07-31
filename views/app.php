@@ -1323,7 +1323,7 @@ __SITE_FAVICON_TAG__
               </div>
               <div v-if="adminTab === 'users-list'" class="panel">
                 <div class="action-row">
-                  <h3>用户列表</h3>
+                  <div><h3>用户列表</h3><p class="panel-sub">此列表包含普通用户、代理、管理员和站长。站长身份固定不可修改，任何人都不能把用户改为站长。</p></div>
                   <div class="inline-actions">
                     <button class="btn ghost" @click="loadAdminUsers(true)">刷新列表</button>
                   </div>
@@ -1347,9 +1347,9 @@ __SITE_FAVICON_TAG__
                         <td>{{ row.group_name || '-' }}</td>
                         <td><span class="badge" :class="row.status==='active' ? 'success' : 'danger'">{{ row.status }}</span></td>
                         <td class="actions-cell">
-                          <button class="btn sm ghost" @click="editUser(row)">编辑</button>
+                          <button class="btn sm ghost" @click="editUser(row)" :disabled="!isOwner && ['owner','admin'].includes(String(row.account_role || ''))">编辑</button>
                           <button class="btn sm warning" @click="resetUserApiKey(row)" :disabled="connectPolicyOf(row) !== 'agent'">重置Key</button>
-                          <button class="btn sm danger" @click="softDeleteUser(row)">删除</button>
+                          <button class="btn sm danger" @click="softDeleteUser(row)" :disabled="String(row.account_role || '') === 'owner' || (!isOwner && String(row.account_role || '') === 'admin')">删除</button>
                         </td>
                       </tr>
                     </tbody>
@@ -2059,7 +2059,8 @@ const app = Vue.createApp({
       homeStats: BOOT.homeStats || { product_count: 0, order_count: 0, total_quantity: 0, items: [] },
       currency: BOOT.currency || '额度',
       adminUrl: BOOT.adminUrl || BOOT.adminPath || '/admin',
-      frontController: BOOT.frontController || '/default.php',
+      baseUrl: BOOT.baseUrl || '',
+      currentPath: BOOT.currentPath || '/',
       user: BOOT.user || null,
       loading: false,
       loadingText: '处理中...',
@@ -2208,6 +2209,21 @@ const app = Vue.createApp({
       }, this);
       return found;
     },
+    filteredAdminUsers: function () {
+      const rows = Array.isArray(this.adminState.users) ? this.adminState.users : [];
+      const keyword = String(this.adminState.userKeyword || '').trim().toLowerCase();
+      if (!keyword) return rows;
+      return rows.filter(function (row) {
+        return [row.username, row.nickname, row.qq, row.uid, row.account_role, row.role_label]
+          .some(function (value) { return String(value || '').toLowerCase().includes(keyword); });
+      });
+    },
+    agentUsers: function () {
+      const rows = Array.isArray(this.adminState.users) ? this.adminState.users : [];
+      return rows.filter(function (row) {
+        return String(row.connect_policy || '') === 'agent' || boolish(row.strategy_agent);
+      });
+    },
     selectedProduct: function () {
       const sign = this.orderForm.sign || '';
       return this.userState.products.find(function (item) { return item.upstream_sign === sign; }) || null;
@@ -2341,21 +2357,23 @@ const app = Vue.createApp({
   },
   mounted: function () {
     this.applyTheme((this.settings && this.settings.theme_config) ? this.settings.theme_config : null);
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab') || window.location.hash.replace(/^#/, '');
+    window.addEventListener('popstate', this.handlePopState);
     if (this.routeMode === 'exchange') {
       this.loadExchangeOrders(true);
     }
     if (this.routeMode === 'user') {
-      if (tab && this.userNav.some(function (item) { return item.key === tab; })) this.userTab = tab;
+      this.userTab = this.userTabFromPath(this.currentPath);
       if (this.user) this.bootstrapUser();
     }
     if (this.routeMode === 'admin') {
-      if (tab && this.adminPageKeys.includes(tab)) this.adminTab = tab;
+      this.adminTab = this.adminTabFromPath(this.currentPath);
       const parent = this.adminParentKey(this.adminTab);
       if (parent) this.adminMenuOpenKeys[parent] = true;
       if (this.canAccessAdmin) this.bootstrapAdmin();
     }
+  },
+  beforeUnmount: function () {
+    window.removeEventListener('popstate', this.handlePopState);
   },
   methods: {
     parseJson: parseJson,
@@ -2564,20 +2582,19 @@ const app = Vue.createApp({
     routeUrl: function (url) {
       const source = String(url || '/');
       if (!source.startsWith('/') || source.startsWith('//')) return source;
-      if (source === this.frontController || source.startsWith(this.frontController + '?')) return source;
 
       const hashIndex = source.indexOf('#');
       const hash = hashIndex >= 0 ? source.slice(hashIndex) : '';
       const withoutHash = hashIndex >= 0 ? source.slice(0, hashIndex) : source;
       const queryIndex = withoutHash.indexOf('?');
       const route = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
-      const query = queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : '';
-      const params = new URLSearchParams();
-      params.set('route', route || '/');
-      new URLSearchParams(query).forEach(function (value, key) {
-        params.append(key, value);
-      });
-      return this.frontController + '?' + params.toString() + hash;
+      const query = queryIndex >= 0 ? withoutHash.slice(queryIndex) : '';
+      const normalizedBase = String(this.baseUrl || '').replace(/\/$/, '');
+      if (normalizedBase && (route === normalizedBase || route.startsWith(normalizedBase + '/'))) {
+        return route + query + hash;
+      }
+      const normalizedRoute = route === '/' ? '/' : '/' + route.replace(/^\/+|\/+$/g, '');
+      return normalizedBase + normalizedRoute + query + hash;
     },
     async fetchJson(url, options) {
       const opts = options || {};
@@ -2621,10 +2638,57 @@ const app = Vue.createApp({
         if (!silent) this.setBusy(false);
       }
     },
-    setTabQuery: function (key, isAdmin) {
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab', key);
-      window.history.replaceState({}, '', url.pathname + '?' + url.searchParams.toString());
+    userPathForTab: function (key) {
+      const slugs = { dashboard: 'home', order: 'order', orders: 'orders', exchange_codes: 'exchange-codes', recharge: 'recharge', invites: 'invites', groups: 'groups', profile: 'settings' };
+      return '/user/' + (slugs[key] || 'home');
+    },
+    userTabFromPath: function (path) {
+      const tabs = { home: 'dashboard', order: 'order', orders: 'orders', 'exchange-codes': 'exchange_codes', recharge: 'recharge', invites: 'invites', groups: 'groups', settings: 'profile' };
+      const normalized = String(path || '/user').replace(/\/+$/, '');
+      if (normalized === '/user') return 'dashboard';
+      const slug = normalized.startsWith('/user/') ? normalized.slice('/user/'.length).split('/')[0] : '';
+      return tabs[slug] || 'dashboard';
+    },
+    adminPathForTab: function (key) {
+      const base = '/' + String(this.adminUrl || '/admin').replace(/^\/+|\/+$/g, '');
+      return base + '/' + (key === 'dashboard' ? 'home' : key);
+    },
+    adminTabFromPath: function (path) {
+      const base = '/' + String(this.adminUrl || '/admin').replace(/^\/+|\/+$/g, '');
+      const normalized = String(path || base).replace(/\/+$/, '');
+      if (normalized === base) return 'dashboard';
+      const slug = normalized.startsWith(base + '/') ? normalized.slice(base.length + 1).split('/')[0] : '';
+      const key = slug === 'home' ? 'dashboard' : slug;
+      return this.adminPageKeys.includes(key) ? key : 'dashboard';
+    },
+    pathFromLocation: function () {
+      const pathname = String(window.location.pathname || '/');
+      const normalizedBase = String(this.baseUrl || '').replace(/\/$/, '');
+      let path = pathname;
+      if (normalizedBase && pathname === normalizedBase) {
+        path = '/';
+      } else if (normalizedBase && pathname.startsWith(normalizedBase + '/')) {
+        path = pathname.slice(normalizedBase.length) || '/';
+      }
+      return path === '/' ? '/' : '/' + path.replace(/^\/+|\/+$/g, '');
+    },
+    async handlePopState() {
+      const path = this.pathFromLocation();
+      this.currentPath = path;
+      if (this.routeMode === 'user') {
+        this.userTab = this.userTabFromPath(path);
+        await this.ensureUserTab(this.userTab, false);
+      } else if (this.routeMode === 'admin') {
+        this.adminTab = this.adminTabFromPath(path);
+        const parent = this.adminParentKey(this.adminTab);
+        if (parent) this.adminMenuOpenKeys[parent] = true;
+        await this.ensureAdminTab(this.adminTab, false);
+      }
+    },
+    setTabPath: function (key, isAdmin) {
+      const path = isAdmin ? this.adminPathForTab(key) : this.userPathForTab(key);
+      this.currentPath = path;
+      window.history.pushState({}, '', this.routeUrl(path));
     },
     async submitLogin(admin) {
       const form = this.home.login;
@@ -2666,7 +2730,7 @@ const app = Vue.createApp({
     },
     async switchUserTab(tab) {
       this.userTab = tab;
-      this.setTabQuery(tab, false);
+      this.setTabPath(tab, false);
       await this.ensureUserTab(tab, false);
     },
     async loadUserProfile(force) {
@@ -2751,7 +2815,7 @@ const app = Vue.createApp({
       this.userTab = 'orders';
       this.userState.orderSearch = data.display_order_no || data.order_no || '';
       await this.showOrderDetail(this.userState.orderSearch);
-      this.setTabQuery('orders', false);
+      this.setTabPath('orders', false);
     },
     async loadUserOrders(force) {
       const rows = await this.fetchJson('/user/api/orders', { method: 'GET', loadingText: '正在加载订单...', silent: !force });
@@ -3030,7 +3094,7 @@ const app = Vue.createApp({
       this.adminTab = this.adminPageKeys.includes(tab) ? tab : 'dashboard';
       const parent = this.adminParentKey(this.adminTab);
       if (parent) this.adminMenuOpenKeys[parent] = true;
-      this.setTabQuery(this.adminTab, true);
+      this.setTabPath(this.adminTab, true);
       await this.ensureAdminTab(this.adminTab, false);
     },
     async loadAdminDashboard(force) {

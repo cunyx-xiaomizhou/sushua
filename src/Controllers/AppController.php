@@ -85,7 +85,7 @@ final class AppController
             'user' => $user,
             'adminPath' => $adminPath,
             'adminUrl' => $adminPath,
-            'frontController' => front_controller_url(),
+            'baseUrl' => application_base_path(),
             'currency' => $this->settings->get('currency_name', '额度'),
             'routeMode' => $this->routeMode($path),
             'currentPath' => $path,
@@ -401,7 +401,7 @@ final class AppController
                 $action === 'groups/default' => (new UserGroupService())->setDefault((int) ($data['id'] ?? 0)),
                 $action === 'users' => (new AuthService())->listUsers($data),
                 $action === 'users/save' => (new AuthService())->saveUser($admin, $data),
-                $action === 'users/delete' => (new AuthService())->softDeleteUser((int) ($data['id'] ?? 0)),
+                $action === 'users/delete' => (new AuthService())->softDeleteUser($admin, (int) ($data['id'] ?? 0)),
                 $action === 'users/reset-key' => ['api_key' => (new AuthService())->resetApiKey((int) ($data['id'] ?? 0))],
                 $action === 'orders' => (new OrderService())->list($admin, true),
                 $action === 'exchange-codes' && $request->method() === 'GET' => (new ProductExchangeCodeService())->listForAdmin(),
@@ -634,9 +634,12 @@ final class AppController
 
     private function routeMode(string $path): string
     {
-        $adminPath = (string) $this->settings->get('admin_path', '/admin');
-        if ($path === $adminPath || str_starts_with($path, $adminPath . '/')) {
-            return 'admin';
+        $adminPath = trim((string) $this->settings->get('admin_path', '/admin'), '/');
+        if ($adminPath !== '') {
+            $adminPrefix = '/' . $adminPath;
+            if ($path === $adminPrefix || str_starts_with($path, $adminPrefix . '/')) {
+                return 'admin';
+            }
         }
         if ($path === '/login') {
             return 'login';

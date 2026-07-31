@@ -19,9 +19,11 @@
 ## 目录
 
 ```text
-default.php                       Web 入口
+default.php                       仅安装前使用的入口
+index.php                         安装完成后自动生成的系统首页/业务入口
 router.php                        PHP 内置服务器路由
-install/index.php                 安装入口
+install/index.php                 安装流程（仅允许 default.php 调用）
+install/application.stub          安装后 index.php 的入口模板
 src/                              核心代码、控制器和服务
 views/app.php                     Vue 前台/管理后台单页
 database/schema.sql               MySQL 建表脚本
@@ -65,13 +67,28 @@ chmod +x ./start-dev.sh
 启动脚本使用服务器上已安装的系统 PHP，不会安装、停止或修改其他项目的 PHP/FPM 进程。可通过 `PORT=3401 ./start-dev.sh` 临时指定监听端口。
 ## Web 服务器路由
 
-首页、登录、注册、用户后台、管理后台和 API 都通过 `default.php` 统一分发。生产环境必须把不存在的文件或目录重写到该入口，否则 `/login`、`/register`、`/user` 等按钮会出现 404。
+`default.php` 只负责安装前展示安装向导，不处理任何系统页面或 API。安装完成后，安装器会在项目根目录生成 `index.php`，由它处理系统业务请求。
+
+浏览器和前端请求只使用普通路径，不暴露入口文件，也不使用 `?route=` 传递页面路由。例如：
+
+```text
+/
+/login
+/register
+/user/home
+/user/settings
+/admin/home
+/admin/users-list
+/api/queryGoods
+```
+
+生产环境必须把不存在的文件或目录内部重写到根目录 `index.php`，否则直接访问或刷新上述路径会返回 404。
 
 - Nginx + PHP-FPM：复制并按服务器实际路径修改 `deploy/nginx/sushua.conf.example`，确认 `root` 与 `fastcgi_pass` 指向当前站点和 PHP 8.3 FPM socket，然后只重载该站点所属的 Nginx 配置。
 - Apache：仓库根目录保留 `.htaccess` 兼容配置，需要启用 `mod_rewrite` 并允许目录级重写（`AllowOverride All`）。
-- 无法立即配置重写时：页面按钮、验证码和前端 API 会自动回退为 `/default.php?route=...`，避免由 Web 服务器直接返回 404；生产环境仍建议启用上述 Nginx/Apache 配置，以支持手工访问 `/login` 等简洁地址。
+- PHP 内置服务器：使用 `./start-dev.sh`，不要直接省略 `router.php`。安装前仅 `/` 与 `/default.php` 会进入安装入口，其他业务路径返回 404；安装后路由器自动切换到生成的 `index.php`。
 
-PHP 内置服务器请使用 `./start-dev.sh`，不要直接省略 `router.php`。
+后台路径可设置为多级路径，例如 `/admin/system`，相应页面和 API 会直接使用 `/admin/system/home`、`/admin/system/api/dashboard` 等地址。
 ## 安装
 
 1. 确保 `storage/` 可写。
@@ -99,16 +116,17 @@ chmod +x ./start-dev.sh
 5. 浏览器打开：
 
 ```text
-http://服务器IP:3400/install
+http://服务器IP:3400/default.php
 ```
 
 6. 安装向导依次完成：环境检查 → 数据库配置 → 站长账号配置。
    - 安装器会使用数据库配置页填写的数据库名，不会强制切换到 `sushua`。
 7. 安装成功后会生成：
+   - 根目录 `index.php`（系统首页与业务入口）
    - `storage/config.php`
    - `storage/install.lock`
 
-已安装状态下访问 `/install` 会被拒绝。如需重新安装，必须先手动删除 `storage/install.lock`，并按需删除/重建数据库；不要在生产环境直接开放安装入口。
+`/install` 不能直接进入安装流程，只能由 `default.php` 调用。安装完成后再次访问 `default.php` 只会显示已安装提示，不会跳转安装页。如从旧版本升级且根目录缺少 `index.php`，该提示页会自动根据 `install/application.stub` 补充生成入口文件。需要重新安装时，必须先备份数据并手动删除 `storage/install.lock`，再访问 `default.php`；同时按需删除或重建数据库。
 
 ## 手动执行 SQL 时的注意事项
 
@@ -304,7 +322,7 @@ curl "http://服务器IP:3400/api/queryGoods?uid=10000001&api_key=YOUR_KEY"
 访问示例：
 
 ```text
-http://服务器IP:3400/install
+http://服务器IP:3400/default.php
 http://服务器IP:3400/
 ```
 

@@ -446,12 +446,19 @@ final class AuthService
         return ['changed' => true];
     }
 
-    public function softDeleteUser(int $id): void
+    public function softDeleteUser(array $actor, int $id): void
     {
         $stmt = $this->pdo->prepare('SELECT account_role FROM users WHERE id = ? LIMIT 1');
         $stmt->execute([$id]);
-        if ((string) $stmt->fetchColumn() === 'owner') {
+        $targetRole = (string) $stmt->fetchColumn();
+        if ($targetRole === '') {
+            throw new RuntimeException('用户不存在');
+        }
+        if ($targetRole === 'owner') {
             throw new RuntimeException('站长账号不允许删除');
+        }
+        if ($targetRole === 'admin' && (string) ($actor['account_role'] ?? '') !== 'owner') {
+            throw new RuntimeException('只有站长可以删除管理员账号');
         }
         $stmt = $this->pdo->prepare('UPDATE users SET status = ?, deleted_at = ?, updated_at = ? WHERE id = ?');
         $stmt->execute(['deleted', now(), now(), $id]);
@@ -466,7 +473,7 @@ final class AuthService
             $kw = '%' . $filters['keyword'] . '%';
             array_push($params, $kw, $kw, $kw, $kw);
         }
-        $sql .= ' ORDER BY u.id DESC LIMIT 200';
+        $sql .= " ORDER BY CASE u.account_role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, u.id DESC LIMIT 200";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return array_map(fn (array $row) => $this->sanitizeUser($row), $stmt->fetchAll());
@@ -556,10 +563,10 @@ final class AuthService
         $user['id'] = (int) ($user['id'] ?? 0);
         $user['connect_policy'] = $this->resolveConnectPolicyFlags(null, $user['strategy_user'], $user['strategy_agent'])['connect_policy'];
         $user['role_label'] = match ((string) ($user['account_role'] ?? 'member')) {
-            'owner' => 'Owner',
-            'admin' => 'Admin',
-            'agent' => 'Agent',
-            default => 'User',
+            'owner' => '站长',
+            'admin' => '管理员',
+            'agent' => '代理',
+            default => '用户',
         };
         return $user;
     }
