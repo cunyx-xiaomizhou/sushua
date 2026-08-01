@@ -286,7 +286,7 @@ final class VersionService
         if ($config === '') return null;
         
         foreach (['origin', 'upstream'] as $remoteName) {
-            $pattern = '/\[remote "' . preg_quote($remoteName, '/') . '"\]\[^\[]*?\n\s*url\s*=\s*(\S+)/s';
+            $pattern = '/\[remote "' . preg_quote($remoteName, '/') . '"\] [^\[]*?\n\s*url\s*=\s*(\S+)/s';
             if (preg_match($pattern, $config, $match)) {
                 $url = trim($match[1]);
                 $parsed = $this->parseRemoteUrl($url);
