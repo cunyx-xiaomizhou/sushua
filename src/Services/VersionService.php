@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace SushuaServices;
+namespace Sushua\Services;
 
 use RuntimeException;
 
