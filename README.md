@@ -1,4 +1,4 @@
-﻿# 系统名称
+# 系统名称
 
 **Sushua 上游加价售卖系统**
 
@@ -159,3 +159,65 @@ https://example.com/api/cron/orders/sync?system_key=YOUR_SYSTEM_KEY
 - 执行异常时返回 HTTP 500，并记录到系统日志的 `scheduled_task` 频道。
 
 定时任务调用失败时，应依次检查站点地址、伪静态、HTTPS、系统密钥、服务器网络、上游配置和系统日志。
+
+# Composer 依赖安装（可选）
+
+系统部分功能依赖第三方 Composer 包，未安装时不影响核心功能使用。
+
+## 安装 Composer
+
+如果服务器尚未安装 Composer，请执行以下命令：
+
+```bash
+# 下载 Composer 安装脚本
+curl -sS https://getcomposer.org/installer | php
+
+# 移动到全局目录
+mv composer.phar /usr/local/bin/composer
+
+# 验证安装
+composer --version
+```
+
+## 安装项目依赖
+
+进入项目根目录执行：
+
+```bash
+cd /path/to/your/project
+composer install --no-dev --optimize-autoloader
+```
+
+## 可选依赖说明
+
+| 依赖包 | 用途 | 安装命令 |
+|--------|------|----------|
+| `symfony/process` | 后台一键更新功能 | `composer require symfony/process` |
+
+### 一键更新功能
+
+系统后台的「版本与在线更新」功能需要 `symfony/process` 组件支持。
+
+**安装方法：**
+
+```bash
+cd /path/to/your/project
+composer require symfony/process
+```
+
+**未安装时的表现：**
+
+- 版本检测功能正常可用
+- 一键更新按钮不显示
+- 页面提示「一键更新功能不可用，请安装 Symfony Process 组件」
+- 不影响系统其他功能正常使用
+
+**手动更新替代方案：**
+
+如果不想安装 Composer 依赖，可以通过 SSH 手动执行更新：
+
+```bash
+cd /path/to/your/project
+git fetch origin main
+git reset --hard origin/main
+```
