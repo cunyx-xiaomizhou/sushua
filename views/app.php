@@ -1657,8 +1657,12 @@ __CUSTOM_HEAD__
               <div v-if="adminTab === 'settings-version'" class="panel">
                 <div class="card-title"><div><h3>版本与在线更新</h3><div class="tiny">管理员每次进入后台时自动检测一次远程版本。</div></div><span class="badge" :class="adminState.version.has_update ? 'warning' : 'success'">{{ adminState.version.has_update ? '发现新版本' : '当前版本' }}</span></div>
                 <div class="info-grid section-gap"><div class="kv-box"><span class="tiny">当前版本</span><strong>{{ (adminState.version.current && adminState.version.current.version) || currentVersion.version || 'v1.0.0' }}</strong></div><div class="kv-box"><span class="tiny">远程版本</span><strong>{{ (adminState.version.remote && adminState.version.remote.version) || '未获取' }}</strong></div><div class="kv-box"><span class="tiny">Git 安装状态</span><strong>{{ adminState.version.git_available ? '可用' : '不可用' }}</strong></div><div class="kv-box"><span class="tiny">最近检测</span><strong>{{ formatDate(adminState.version.checked_at) }}</strong></div></div>
-                <div class="placeholder-card section-gap">{{ adminState.version.message || '尚未执行版本检测。' }}</div><div class="section-gap"><h3>{{ adminState.version.has_update ? '新版本特性' : '当前版本特性' }}</h3><ul class="feature-list"><li v-for="(feature,index) in versionFeatures" :key="index">{{ feature }}</li></ul></div>
-                <div class="auth-footnote section-gap">在线版本检测仅在项目根目录存在 <span class="code-inline">.git</span> 时可用。本系统不会调用 exec、shell_exec、system、proc_open 等命令执行函数，也不会用未经验证的压缩包覆盖代码。检测到更新后，请先备份数据库与配置，再通过服务器的 Git 部署流程更新。</div>
+                <div class="placeholder-card section-gap">{{ adminState.version.message || '尚未执行版本检测。' }}</div>
+                <div v-if="adminState.version.has_update && adminState.version.can_update" class="section-gap">
+                  <button class="btn primary" @click="updateVersion" :disabled="adminState.version.updating">{{ adminState.version.updating ? '正在更新...' : '一键更新' }}</button>
+                </div>
+                <div class="section-gap"><h3>{{ adminState.version.has_update ? '新版本特性' : '当前版本特性' }}</h3><ul class="feature-list"><li v-for="(feature,index) in versionFeatures" :key="index">{{ feature }}</li></ul></div>
+                <div class="auth-footnote section-gap">在线版本更新仅在项目根目录存在 <span class="code-inline">.git</span> 时可用。更新前请先备份数据库与配置。系统将自动执行 <span class="code-inline">git pull origin main</span> 拉取最新代码。</div>
               </div>
 
               <div v-if="adminTab === 'scheduled-tasks'" class="panel">
@@ -3456,11 +3460,28 @@ const app = Vue.createApp({
       if (!force && this.adminState.version.checked_at) return this.adminState.version;
       try {
         const data = await this.fetchJson(this.adminUrl + '/api/version/check', { method: 'GET', loadingText: '正在检测新版本...', silent: !force });
-        this.adminState.version = Object.assign({ current: this.currentVersion, remote: null, has_update: false, git_available: false, can_update: false, checked_at: '', message: '' }, data || {});
+        this.adminState.version = Object.assign({ current: this.currentVersion, remote: null, has_update: false, git_available: false, can_update: false, checked_at: '', message: '', updating: false }, data || {});
         return data;
       } catch (error) {
         this.adminState.version = Object.assign({}, this.adminState.version, { current: this.currentVersion, checked_at: new Date().toISOString(), message: error.message || '版本检测失败' });
         return null;
+      }
+    },
+    async updateVersion() {
+      if (!confirm('确定要更新到最新版本吗？建议先备份数据库和配置。')) return;
+      this.adminState.version.updating = true;
+      try {
+        const data = await this.fetchJson(this.adminUrl + '/api/version/update', { method: 'POST', loadingText: '正在执行更新...' });
+        if (data && data.updated) {
+          this.notify('更新成功！页面将刷新以加载新版本。', 'success');
+          setTimeout(() => location.reload(), 2000);
+        } else {
+          this.notify(data && data.message || '当前已是最新版本。', 'info');
+          this.adminState.version.updating = false;
+        }
+      } catch (error) {
+        this.notify(error.message || '更新失败，请查看系统日志。', 'error');
+        this.adminState.version.updating = false;
       }
     },
     async reloadCurrentSettingsPage() {

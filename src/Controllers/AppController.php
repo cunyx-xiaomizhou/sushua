@@ -523,6 +523,7 @@ final class AppController
                 $action === 'settings' && $request->method() === 'GET' => $this->settings->all(),
                 $action === 'settings/save' => $this->saveSettings($data),
                 $action === 'version/check' && $request->method() === 'GET' => (new VersionService())->check(),
+                $action === 'version/update' => (new VersionService())->update(),
                 $action === 'scheduled-tasks/key' && $request->method() === 'GET' => $this->scheduledTaskKeyInfo(),
                 $action === 'scheduled-tasks/key/reset' && $request->method() === 'POST' => $this->resetScheduledTaskKey($admin),
                 $action === 'upstream' && $request->method() === 'GET' => $pdo->query('SELECT id,name,base_url,upstream_uid,enabled,is_default,options_json,created_at,updated_at FROM upstream_accounts ORDER BY id DESC')->fetchAll(),

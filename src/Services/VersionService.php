@@ -31,7 +31,7 @@ final class VersionService
             'remote' => null,
             'has_update' => false,
             'git_available' => $gitAvailable,
-            'can_update' => false,
+            'can_update' => $gitAvailable,
             'checked_at' => date(DATE_ATOM),
             'message' => $gitAvailable
                 ? '正在读取远程版本清单。'
@@ -57,6 +57,32 @@ final class VersionService
         $result['message'] = $result['has_update']
             ? '检测到新版本，请先备份数据库和配置，再通过 Git 拉取更新。'
             : '当前已经是最新版本。';
+        return $result;
+    }
+
+
+    public function update(): array
+    {
+        if (!is_dir(base_path('.git'))) {
+            throw new RuntimeException('项目根目录未检测到 .git，无法进行在线更新。');
+        }
+        $remote = $this->fetchRemoteVersion();
+        if ($remote === null) {
+            throw new RuntimeException('暂时无法读取远程版本清单。');
+        }
+        $hasUpdate = $this->compareVersions((string) ($remote['version'] ?? ''), (string) ($this->current()['version'] ?? self::CURRENT_VERSION)) > 0;
+        if (!$hasUpdate) {
+            return ['updated' => false, 'message' => '当前已经是最新版本。'];
+        }
+        $output = shell_exec('cd ' . escapeshellarg(base_path()) . ' && git pull origin main 2>&1');
+        if ($output === null) {
+            throw new RuntimeException('更新命令执行失败。');
+        }
+        if (stripos($output, 'error') !== false || stripos($output, 'fatal') !== false) {
+            throw new RuntimeException('更新失败：' . trim($output));
+        }
+        $result = ['updated' => true, 'message' => trim($output)];
+        $result['new_version'] = $this->current();
         return $result;
     }
 
