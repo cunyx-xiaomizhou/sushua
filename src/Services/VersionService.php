@@ -102,7 +102,6 @@ final class VersionService
         
         $root = base_path();
         
-        // 使用 Symfony Process 执行 Git 命令
         try {
             $processClass = $this->getProcessClass();
             
@@ -143,6 +142,12 @@ final class VersionService
 
     private function canUseGitProcess(): bool
     {
+        // 尝试加载 Composer autoloader
+        $autoloadFile = base_path('vendor/autoload.php');
+        if (file_exists($autoloadFile) && !class_exists('Symfony\Component\Process\Process')) {
+            require_once $autoloadFile;
+        }
+        
         return class_exists('Symfony\Component\Process\Process');
     }
 

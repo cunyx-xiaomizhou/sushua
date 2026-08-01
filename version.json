@@ -1,9 +1,9 @@
 {
-  "version": "v1.0.4",
+  "version": "v1.0.5",
   "name": "粥粥速刷系统",
   "features": [
-    "删除 server/ai-skills 目录",
-    "版本更新至 1.0.4"
+    "修复 Composer autoloader 加载问题",
+    "一键更新改用自定义确认弹窗"
   ],
   "repository": "http://localhost:3000/xmz/sushua"
 }
