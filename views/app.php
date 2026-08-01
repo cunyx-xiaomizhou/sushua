@@ -198,7 +198,7 @@ __CUSTOM_HEAD__
 <div class="tpl-modern">
   <div class="modern-hero">
     <div class="modern-hero-content">
-      <div class="modern-badge">🚀 专业速刷平台</div>
+      <div class="modern-badge">专业速刷平台</div>
       <h1 class="modern-title">{{ site.name }}</h1>
       <p class="modern-desc">高效稳定的在线下单平台，支持多种商品类型，实时查单，秒速到账。</p>
       <div class="modern-actions">
@@ -220,10 +220,10 @@ __CUSTOM_HEAD__
   <div class="modern-features section-gap">
     <h2 class="modern-section-title">核心优势</h2>
     <div class="modern-feature-grid">
-      <div class="modern-feature-card"><div class="modern-feature-icon">⚡</div><h3>秒速到账</h3><p>下单后立即进入队列，无需漫长等待。</p></div>
-      <div class="modern-feature-card"><div class="modern-feature-icon">🛡️</div><h3>安全稳定</h3><p>真实用户数据，非机器刷量，稳定可靠。</p></div>
-      <div class="modern-feature-card"><div class="modern-feature-icon">💰</div><h3>价格优惠</h3><p>低于全网同行价格，给你最舒心的体验。</p></div>
-      <div class="modern-feature-card"><div class="modern-feature-icon">🔌</div><h3>API对接</h3><p>开放接口，轻松对接你的服务平台。</p></div>
+      <div class="modern-feature-card"><div class="modern-feature-icon">01</div><h3>秒速到账</h3><p>下单后立即进入队列，无需漫长等待。</p></div>
+      <div class="modern-feature-card"><div class="modern-feature-icon">02</div><h3>安全稳定</h3><p>真实用户数据，非机器刷量，稳定可靠。</p></div>
+      <div class="modern-feature-card"><div class="modern-feature-icon">03</div><h3>价格优惠</h3><p>低于全网同行价格，给你最舒心的体验。</p></div>
+      <div class="modern-feature-card"><div class="modern-feature-icon">04</div><h3>API对接</h3><p>开放接口，轻松对接你的服务平台。</p></div>
     </div>
   </div>
 
@@ -306,19 +306,19 @@ __CUSTOM_HEAD__
 
   <div class="business-metrics section-gap">
     <div class="business-metric-card">
-      <div class="business-metric-icon">📦</div>
+      <div class="business-metric-icon">01</div>
       <div class="business-metric-info"><span class="business-metric-num">{{ homeStats.product_count || 0 }}</span><span class="business-metric-label">商品总数</span></div>
     </div>
     <div class="business-metric-card">
-      <div class="business-metric-icon">📋</div>
+      <div class="business-metric-icon">02</div>
       <div class="business-metric-info"><span class="business-metric-num">{{ homeStats.order_count || 0 }}</span><span class="business-metric-label">订单总数</span></div>
     </div>
     <div class="business-metric-card">
-      <div class="business-metric-icon">📊</div>
+      <div class="business-metric-icon">03</div>
       <div class="business-metric-info"><span class="business-metric-num">{{ money(homeStats.total_quantity || 0) }}</span><span class="business-metric-label">总下单数</span></div>
     </div>
     <div class="business-metric-card">
-      <div class="business-metric-icon">🔗</div>
+      <div class="business-metric-icon">04</div>
       <div class="business-metric-info"><span class="business-metric-num">{{ boolText(settings.api_order_enabled) }}</span><span class="business-metric-label">API对接</span></div>
     </div>
   </div>
@@ -327,19 +327,19 @@ __CUSTOM_HEAD__
     <h2 class="business-section-title">我们的服务</h2>
     <div class="business-service-grid">
       <div class="business-service-card">
-        <div class="business-service-icon">⚡</div>
+        <div class="business-service-icon">A</div>
         <h3>在线下单</h3>
         <p>支持多种商品类型，实时下单，秒速处理。</p>
         <a :href="routeUrl(user ? '/user' : '/login')" class="btn business-btn-sm">立即体验</a>
       </div>
       <div class="business-service-card">
-        <div class="business-service-icon">🔍</div>
+        <div class="business-service-icon">B</div>
         <h3>实时查单</h3>
         <p>订单状态实时更新，处理进度一目了然。</p>
         <a :href="routeUrl(user ? '/user/orders' : '/login')" class="btn business-btn-sm">查看订单</a>
       </div>
       <div class="business-service-card">
-        <div class="business-service-icon">🔌</div>
+        <div class="business-service-icon">C</div>
         <h3>API对接</h3>
         <p>开放标准接口，轻松集成到你的平台。</p>
         <a href="https://shua-xmzkj.apifox.cn/" target="_blank" rel="noopener" class="btn business-btn-sm">查看文档</a>
@@ -350,12 +350,12 @@ __CUSTOM_HEAD__
   <div class="business-advantages section-gap">
     <h2 class="business-section-title">为什么选择我们</h2>
     <div class="business-advantage-grid">
-      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>秒速到账，无需等待</span></div>
-      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>真实数据，安全稳定</span></div>
-      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>价格优惠，性价比高</span></div>
-      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>7×24 小时社群支持</span></div>
-      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>支持卡密兑换功能</span></div>
-      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>完善的API文档</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">&bull;</span><span>秒速到账，无需等待</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">&bull;</span><span>真实数据，安全稳定</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">&bull;</span><span>价格优惠，性价比高</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">&bull;</span><span>7×24 小时社群支持</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">&bull;</span><span>支持卡密兑换功能</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">&bull;</span><span>完善的API文档</span></div>
     </div>
   </div>
 

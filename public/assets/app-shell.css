@@ -369,3 +369,8 @@ html,body{max-width:100%;overflow-x:hidden}
   .minimal-stats { flex-direction: column; gap: 16px; }
   .business-hero h1 { font-size: 32px; }
 }
+/* Template Icon Styles */
+.modern-feature-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; margin: 0 auto 16px; }
+.business-metric-icon { width: 48px; height: 48px; border-radius: 12px; background: color-mix(in srgb, var(--primary) 10%, var(--surface)); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 900; }
+.business-service-icon { width: 56px; height: 56px; border-radius: 16px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; margin: 0 auto 16px; }
+.business-advantage-check { width: 24px; height: 24px; border-radius: 50%; background: color-mix(in srgb, var(--success) 15%, var(--surface)); color: var(--success); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; }

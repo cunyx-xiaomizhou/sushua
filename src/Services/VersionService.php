@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
 namespace Sushua\Services;
@@ -7,12 +7,12 @@ use RuntimeException;
 
 final class VersionService
 {
-    public const CURRENT_VERSION = 'v1.0.0';
+    private const FALLBACK_VERSION = 'v1.0.0';
 
     public function current(): array
     {
         $fallback = [
-            'version' => self::CURRENT_VERSION,
+            'version' => self::FALLBACK_VERSION,
             'name' => '粥粥速刷系统',
             'features' => ['支持在线下单、接口对接、兑换码和后台管理'],
         ];
@@ -20,6 +20,11 @@ final class VersionService
         if (!is_file($file)) return $fallback;
         $data = json_decode((string) file_get_contents($file), true);
         return is_array($data) ? array_replace($fallback, $data) : $fallback;
+    }
+
+    public function currentVersion(): string
+    {
+        return (string) ($this->current()['version'] ?? self::FALLBACK_VERSION);
     }
 
     public function check(): array
@@ -53,13 +58,12 @@ final class VersionService
             return $result;
         }
         $result['remote'] = $remote;
-        $result['has_update'] = $this->compareVersions((string) ($remote['version'] ?? ''), (string) ($current['version'] ?? self::CURRENT_VERSION)) > 0;
+        $result['has_update'] = $this->compareVersions((string) ($remote['version'] ?? ''), $this->currentVersion()) > 0;
         $result['message'] = $result['has_update']
-            ? '检测到新版本，请先备份数据库和配置，再通过 Git 拉取更新。'
+            ? '检测到新版本：' . ($remote['version'] ?? '未知') . '，点击一键更新即可升级。'
             : '当前已经是最新版本。';
         return $result;
     }
-
 
     public function update(): array
     {
@@ -70,20 +74,25 @@ final class VersionService
         if ($remote === null) {
             throw new RuntimeException('暂时无法读取远程版本清单。');
         }
-        $hasUpdate = $this->compareVersions((string) ($remote['version'] ?? ''), (string) ($this->current()['version'] ?? self::CURRENT_VERSION)) > 0;
+        $hasUpdate = $this->compareVersions((string) ($remote['version'] ?? ''), $this->currentVersion()) > 0;
         if (!$hasUpdate) {
             return ['updated' => false, 'message' => '当前已经是最新版本。'];
         }
-        $output = shell_exec('cd ' . escapeshellarg(base_path()) . ' && git pull origin main 2>&1');
+        $root = base_path();
+        $output = shell_exec('cd ' . escapeshellarg($root) . ' && git fetch origin main 2>&1 && git reset --hard origin/main 2>&1');
         if ($output === null) {
-            throw new RuntimeException('更新命令执行失败。');
+            throw new RuntimeException('更新命令执行失败，请检查服务器 Git 配置。');
         }
-        if (stripos($output, 'error') !== false || stripos($output, 'fatal') !== false) {
+        if (stripos($output, 'fatal') !== false) {
             throw new RuntimeException('更新失败：' . trim($output));
         }
-        $result = ['updated' => true, 'message' => trim($output)];
-        $result['new_version'] = $this->current();
-        return $result;
+        clearstatcache(true, $root . '/version.json');
+        $newVersion = $this->current();
+        return [
+            'updated' => true,
+            'message' => '更新成功，当前版本：' . ($newVersion['version'] ?? '未知'),
+            'new_version' => $newVersion,
+        ];
     }
 
     private function fetchRemoteVersion(): ?array
