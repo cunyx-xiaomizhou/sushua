@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
 namespace Sushua\Controllers;
@@ -838,6 +838,7 @@ final class AppController
             'exchange_code_random_length',
             'exchange_code_format',
             'exchange_code_cookie_days',
+              'home_template',
         ];
         $public = [];
         foreach ($keys as $key) {

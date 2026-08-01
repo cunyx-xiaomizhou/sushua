@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
 namespace Sushua\Services;
@@ -138,6 +138,7 @@ final class SettingsService
             'exchange_code_format' => '{prefix}{uid}{random}',
             'exchange_code_cookie_days' => '60',
             'balance_downgrade_enabled' => '0',
+            'home_template' => 'default',
         ];
     }
 

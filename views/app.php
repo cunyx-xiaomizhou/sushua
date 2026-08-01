@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -114,150 +114,273 @@ __CUSTOM_HEAD__
   </header>
 
   <main class="shell">
-    <section v-if="routeMode === 'home'">
-      <div class="hero">
-        <div class="hero-card primary">
-          <h1>{{ site.name }}</h1>
-          <p>专注于稳定下单、实时查单、代理售卖与额度充值体验。无论你是自己使用，还是准备搭建售卖渠道，这里都能直接开工。</p>
-          <div class="home-actions">
-            <a v-if="!user" class="btn primary" :href="routeUrl('/login')">立即登录</a>
-            <a v-if="!user" class="btn ghost" :href="routeUrl('/register')">注册账号</a>
-            <a v-if="user" class="btn primary" :href="routeUrl('/user')">进入用户后台</a>
-            <a v-if="canAccessAdmin" class="btn ghost" :href="routeUrl(adminUrl)">进入管理后台</a>
-            <a class="btn ghost" href="https://shua-xmzkj.apifox.cn/" target="_blank" rel="noopener">接口文档</a>
-          </div>
-        </div>
-        <div class="hero-card side">
-          <div class="hero-summary">
-            <div class="hero-side-item">
-              <small class="muted">商品总数</small>
-              <strong>{{ homeStats.product_count || 0 }}</strong>
-            </div>
-            <div class="hero-side-item">
-              <small class="muted">订单总数</small>
-              <strong>{{ homeStats.order_count || 0 }}</strong>
-            </div>
-            <div class="hero-side-item">
-              <small class="muted">总下单数</small>
-              <strong>{{ money(homeStats.total_quantity || 0) }}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
+﻿<section v-if="routeMode === 'home'">
 
-      <div class="grid-2 section-gap">
-        <div class="panel landing-intro">
-          <div class="page-head" style="margin-bottom:0">
-            <div>
-              <h2>系统介绍</h2>
-              <p>面向用户的速刷服务面板，支持在线下单、额度充值、邀请推广、代理升级与接口接入。</p>
-            </div>
-          </div>
-          <div class="landing-quick-links">
-            <a class="home-link-card" :href="routeUrl('/user')">
-              <h4>下单控制台</h4>
-              <p>登录后即可进入用户后台，进行在线下单、查单、充值与邀请码管理。</p>
-            </a>
-            <a class="home-link-card" :href="routeUrl('/login')">
-              <h4>统一登录</h4>
-              <p>普通用户、管理员、站长统一使用同一登录页，登录时强制校验图片验证码。</p>
-            </a>
-            <a class="home-link-card" :href="routeUrl('/register')">
-              <h4>快速注册</h4>
-              <p>注册默认收集用户名、昵称、QQ 与密码，可按后台策略扩展邮箱或手机号。</p>
-            </a>
-            <a class="home-link-card" href="https://shua-xmzkj.apifox.cn/" target="_blank" rel="noopener">
-              <h4>接口文档</h4>
-              <p>对接前请先阅读接口文档，确认所需参数、返回格式与业务规则。</p>
-            </a>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="page-head" style="margin-bottom:0">
-            <div>
-              <h2>{{ canShowSupportGroup ? '交流群与售后群' : '用户交流群' }}</h2>
-              <p>群号可在后台实时配置。若你在 QQ 内打开，将优先尝试调起 QQ 群名片。</p>
-            </div>
-          </div>
-          <div class="landing-metrics section-gap">
-            <div class="landing-group-card">
-              <small class="muted">用户交流群</small>
-              <div class="landing-group-code">{{ settings.community_group_qq || '未配置' }}</div>
-              <div class="landing-group-actions">
-                <button class="btn primary" @click="openGroup('community')">加入用户交流群</button>
-              </div>
-            </div>
-            <div v-if="canShowSupportGroup" class="landing-group-card">
-              <small class="muted">售后 / 支持群</small>
-              <div class="landing-group-code">{{ settings.support_group_qq || '未配置' }}</div>
-              <div class="landing-group-actions">
-                <button class="btn primary" @click="openGroup('support')">加入售后群</button>
-              </div>
-            </div>
-          </div>
-          <div class="auth-footnote">如果当前设备无法直接拉起 QQ，可复制群号到 QQ 内搜索加入。</div>
-        </div>
-      </div>
+<!-- Template: default -->
+<template v-if="(settings.home_template || 'default') === 'default'">
+<div class="hero">
+  <div class="hero-card primary">
+    <h1>{{ site.name }}</h1>
+    <p>专注于稳定下单、实时查单、代理售卖与额度充值体验。无论你是自己使用，还是准备搭建售卖渠道，这里都能直接开工。</p>
+    <div class="home-actions">
+      <a v-if="!user" class="btn primary" :href="routeUrl('/login')">立即登录</a>
+      <a v-if="!user" class="btn ghost" :href="routeUrl('/register')">注册账号</a>
+      <a v-if="user" class="btn primary" :href="routeUrl('/user')">进入用户后台</a>
+      <a v-if="canAccessAdmin" class="btn ghost" :href="routeUrl(adminUrl)">进入管理后台</a>
+      <a class="btn ghost" href="https://shua-xmzkj.apifox.cn/" target="_blank" rel="noopener">接口文档</a>
+    </div>
+  </div>
+  <div class="hero-card side">
+    <div class="hero-summary">
+      <div class="hero-side-item"><small class="muted">商品总数</small><strong>{{ homeStats.product_count || 0 }}</strong></div>
+      <div class="hero-side-item"><small class="muted">订单总数</small><strong>{{ homeStats.order_count || 0 }}</strong></div>
+      <div class="hero-side-item"><small class="muted">总下单数</small><strong>{{ money(homeStats.total_quantity || 0) }}</strong></div>
+    </div>
+  </div>
+</div>
 
-      <div class="record-links section-gap" v-if="settings.icp_beian_no || settings.public_security_beian_no">
-        <a v-if="settings.icp_beian_no" href="https://beian.miit.gov.cn" target="_blank" rel="noopener">{{ settings.icp_beian_no }}</a>
-        <div v-if="settings.public_security_beian_no" class="muted">网安备案：{{ settings.public_security_beian_no }}</div>
-      </div>
+<div class="grid-2 section-gap">
+  <div class="panel landing-intro">
+    <div class="page-head" style="margin-bottom:0"><div><h2>系统介绍</h2><p>面向用户的速刷服务面板，支持在线下单、额度充值、邀请推广、代理升级与接口接入。</p></div></div>
+    <div class="landing-quick-links">
+      <a class="home-link-card" :href="routeUrl('/user')"><h4>下单控制台</h4><p>登录后即可进入用户后台，进行在线下单、查单、充值与邀请码管理。</p></a>
+      <a class="home-link-card" :href="routeUrl('/login')"><h4>统一登录</h4><p>普通用户、管理员、站长统一使用同一登录页，登录时强制校验图片验证码。</p></a>
+      <a class="home-link-card" :href="routeUrl('/register')"><h4>快速注册</h4><p>注册默认收集用户名、昵称、QQ 与密码，可按后台策略扩展邮箱或手机号。</p></a>
+      <a class="home-link-card" href="https://shua-xmzkj.apifox.cn/" target="_blank" rel="noopener"><h4>接口文档</h4><p>对接前请先阅读接口文档，确认所需参数、返回格式与业务规则。</p></a>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="page-head" style="margin-bottom:0"><div><h2>{{ canShowSupportGroup ? '交流群与售后群' : '用户交流群' }}</h2><p>群号可在后台实时配置。若你在 QQ 内打开，将优先尝试调起 QQ 群名片。</p></div></div>
+    <div class="landing-metrics section-gap">
+      <div class="landing-group-card"><small class="muted">用户交流群</small><div class="landing-group-code">{{ settings.community_group_qq || '未配置' }}</div><div class="landing-group-actions"><button class="btn primary" @click="openGroup('community')">加入交流群</button></div></div>
+      <div v-if="canShowSupportGroup" class="landing-group-card"><small class="muted">售后 / 支持群</small><div class="landing-group-code">{{ settings.support_group_qq || '未配置' }}</div><div class="landing-group-actions"><button class="btn primary" @click="openGroup('support')">加入售后群</button></div></div>
+    </div>
+    <div class="auth-footnote">如果当前设备无法直接拉起 QQ，可复制群号到 QQ 内搜索加入。</div>
+  </div>
+</div>
 
-      <div class="stats-grid section-gap">
-        <div class="stat"><small>商品总数</small><strong>{{ homeStats.product_count || 0 }}</strong></div>
-        <div class="stat"><small>订单总数</small><strong>{{ homeStats.order_count || 0 }}</strong></div>
-        <div class="stat"><small>总下单数</small><strong>{{ money(homeStats.total_quantity || 0) }}</strong></div>
-        <div class="stat"><small>接口对接</small><strong>{{ boolText(settings.api_order_enabled) }}</strong></div>
-      </div>
+<div class="record-links section-gap" v-if="settings.icp_beian_no || settings.public_security_beian_no">
+  <a v-if="settings.icp_beian_no" href="https://beian.miit.gov.cn" target="_blank" rel="noopener">{{ settings.icp_beian_no }}</a>
+  <div v-if="settings.public_security_beian_no" class="muted">网安备案：{{ settings.public_security_beian_no }}</div>
+</div>
 
-      <div class="panel section-gap">
-        <div class="page-head">
-          <div>
-            <h2>商品订单数据</h2>
-            <p>仅展示已有订单记录的商品，帮助你快速判断当前热门商品和处理效率。</p>
-          </div>
-        </div>
-        <div v-if="homeStats.items && homeStats.items.length" class="table-wrap home-metric-table">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>商品名称</th>
-                <th>订单总数</th>
-                <th>下单总数</th>
-                <th>平均处理速度（每小时）</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in homeStats.items" :key="item.id">
-                <td>{{ item.name }}</td>
-                <td>{{ item.order_count }}</td>
-                <td>{{ money(item.total_quantity) }}</td>
-                <td>{{ item.avg_speed_per_hour === null ? '-' : item.avg_speed_per_hour }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-else class="empty">当前还没有产生订单的商品数据。</div>
-      </div>
+<div class="stats-grid section-gap">
+  <div class="stat"><small>商品总数</small><strong>{{ homeStats.product_count || 0 }}</strong></div>
+  <div class="stat"><small>订单总数</small><strong>{{ homeStats.order_count || 0 }}</strong></div>
+  <div class="stat"><small>总下单数</small><strong>{{ money(homeStats.total_quantity || 0) }}</strong></div>
+  <div class="stat"><small>接口对接</small><strong>{{ boolText(settings.api_order_enabled) }}</strong></div>
+</div>
 
-      <div class="panel section-gap">
-        <div class="page-head">
-          <div>
-            <h2>为什么选择我们的服务</h2>
-            <p>下面这六点，就是这个系统最直观、最容易被感受到的体验优势。</p>
-          </div>
-        </div>
-        <div class="feature-grid">
-          <div class="feature-card"><h3>秒速到账</h3><p>下单后立即进入队列，无需漫长等待，下单秒刷。</p></div>
-          <div class="feature-card"><h3>安全稳定</h3><p>所有数据均来源于真实用户的凭证，非机器刷量，可霸占人气排行榜。</p></div>
-          <div class="feature-card"><h3>便宜实惠</h3><p>当前价格远远低于全网同行，给你最稳定最舒心的体验。</p></div>
-          <div class="feature-card"><h3>社群支持</h3><p>相应社群 7×24 小时全天候开放，随时解决你的问题和需求。</p></div>
-          <div class="feature-card"><h3>卡密对接</h3><p>我们开放卡密下单功能，让你可以在各类发卡平台上进行售卖商品，且支持用户自助兑换下单。</p></div>
-          <div class="feature-card"><h3>API对接</h3><p>我们开放 API 下单接口，让你对接你自己的服务进行售卖赚钱。</p></div>
-        </div>
+<div class="panel section-gap">
+  <div class="page-head"><div><h2>商品订单数据</h2><p>仅展示已有订单记录的商品，帮助你快速判断当前热门商品和处理效率。</p></div></div>
+  <div v-if="homeStats.items && homeStats.items.length" class="table-wrap home-metric-table">
+    <table class="table"><thead><tr><th>商品名称</th><th>订单总数</th><th>下单总数</th><th>平均处理速度（每小时）</th></tr></thead>
+    <tbody><tr v-for="item in homeStats.items" :key="item.id"><td>{{ item.name }}</td><td>{{ item.order_count }}</td><td>{{ money(item.total_quantity) }}</td><td>{{ item.avg_speed_per_hour === null ? '-' : item.avg_speed_per_hour }}</td></tr></tbody></table>
+  </div>
+  <div v-else class="empty">当前还没有产生订单的商品数据。</div>
+</div>
+
+<div class="panel section-gap">
+  <div class="page-head"><div><h2>为什么选择我们的服务</h2><p>下面这六点，就是这个系统最直观、最容易被感受到的体验优势。</p></div></div>
+  <div class="feature-grid">
+    <div class="feature-card"><h3>秒速到账</h3><p>下单后立即进入队列，无需漫长等待，下单秒刷。</p></div>
+    <div class="feature-card"><h3>安全稳定</h3><p>所有数据均来源于真实用户的凭证，非机器刷量，可霸占人气排行榜。</p></div>
+    <div class="feature-card"><h3>便宜实惠</h3><p>当前价格远远低于全网同行，给你最稳定最舒心的体验。</p></div>
+    <div class="feature-card"><h3>社群支持</h3><p>相应社群 7×24 小时全天候开放，随时解决你的问题和需求。</p></div>
+    <div class="feature-card"><h3>卡密对接</h3><p>我们开放卡密下单功能，让你可以在各类发卡平台上进行售卖商品，且支持用户自助兑换下单。</p></div>
+    <div class="feature-card"><h3>API对接</h3><p>我们开放 API 下单接口，让你对接你自己的服务进行售卖赚钱。</p></div>
+  </div>
+</div>
+</template>
+
+<!-- Template: modern -->
+<template v-if="settings.home_template === 'modern'">
+<div class="tpl-modern">
+  <div class="modern-hero">
+    <div class="modern-hero-content">
+      <div class="modern-badge">🚀 专业速刷平台</div>
+      <h1 class="modern-title">{{ site.name }}</h1>
+      <p class="modern-desc">高效稳定的在线下单平台，支持多种商品类型，实时查单，秒速到账。</p>
+      <div class="modern-actions">
+        <a v-if="!user" class="btn modern-btn-primary" :href="routeUrl('/login')">立即开始</a>
+        <a v-if="!user" class="btn modern-btn-outline" :href="routeUrl('/register')">免费注册</a>
+        <a v-if="user" class="btn modern-btn-primary" :href="routeUrl('/user')">用户后台</a>
+        <a v-if="canAccessAdmin" class="btn modern-btn-outline" :href="routeUrl(adminUrl)">管理后台</a>
       </div>
-    </section>
+    </div>
+    <div class="modern-hero-visual">
+      <div class="modern-stats-card">
+        <div class="modern-stat-item"><span class="modern-stat-num">{{ homeStats.product_count || 0 }}</span><span class="modern-stat-label">商品总数</span></div>
+        <div class="modern-stat-item"><span class="modern-stat-num">{{ homeStats.order_count || 0 }}</span><span class="modern-stat-label">订单总数</span></div>
+        <div class="modern-stat-item"><span class="modern-stat-num">{{ money(homeStats.total_quantity || 0) }}</span><span class="modern-stat-label">总下单数</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modern-features section-gap">
+    <h2 class="modern-section-title">核心优势</h2>
+    <div class="modern-feature-grid">
+      <div class="modern-feature-card"><div class="modern-feature-icon">⚡</div><h3>秒速到账</h3><p>下单后立即进入队列，无需漫长等待。</p></div>
+      <div class="modern-feature-card"><div class="modern-feature-icon">🛡️</div><h3>安全稳定</h3><p>真实用户数据，非机器刷量，稳定可靠。</p></div>
+      <div class="modern-feature-card"><div class="modern-feature-icon">💰</div><h3>价格优惠</h3><p>低于全网同行价格，给你最舒心的体验。</p></div>
+      <div class="modern-feature-card"><div class="modern-feature-icon">🔌</div><h3>API对接</h3><p>开放接口，轻松对接你的服务平台。</p></div>
+    </div>
+  </div>
+
+  <div class="modern-cta section-gap">
+    <div class="modern-cta-card">
+      <h2>准备好开始了吗？</h2>
+      <p>注册即刻体验高效稳定的速刷服务</p>
+      <div class="modern-cta-actions">
+        <a v-if="!user" class="btn modern-btn-primary" :href="routeUrl('/register')">立即注册</a>
+        <a v-if="user" class="btn modern-btn-primary" :href="routeUrl('/user')">进入后台</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="modern-footer section-gap">
+    <div v-if="settings.community_group_qq" class="modern-group"><span>用户交流群：</span><strong>{{ settings.community_group_qq }}</strong><button class="btn sm" @click="openGroup('community')">加入</button></div>
+    <div v-if="canShowSupportGroup && settings.support_group_qq" class="modern-group"><span>售后群：</span><strong>{{ settings.support_group_qq }}</strong><button class="btn sm" @click="openGroup('support')">加入</button></div>
+    <div class="modern-beian" v-if="settings.icp_beian_no"><a href="https://beian.miit.gov.cn" target="_blank" rel="noopener">{{ settings.icp_beian_no }}</a></div>
+  </div>
+</div>
+</template>
+
+<!-- Template: minimal -->
+<template v-if="settings.home_template === 'minimal'">
+<div class="tpl-minimal">
+  <div class="minimal-header">
+    <h1>{{ site.name }}</h1>
+    <p class="minimal-tagline">高效 · 稳定 · 实惠</p>
+  </div>
+
+  <div class="minimal-stats section-gap">
+    <div class="minimal-stat"><span class="minimal-num">{{ homeStats.product_count || 0 }}</span><span class="minimal-label">商品</span></div>
+    <div class="minimal-stat"><span class="minimal-num">{{ homeStats.order_count || 0 }}</span><span class="minimal-label">订单</span></div>
+    <div class="minimal-stat"><span class="minimal-num">{{ money(homeStats.total_quantity || 0) }}</span><span class="minimal-label">总下单</span></div>
+  </div>
+
+  <div class="minimal-actions section-gap">
+    <a v-if="!user" class="btn minimal-btn-primary" :href="routeUrl('/login')">登录</a>
+    <a v-if="!user" class="btn minimal-btn-ghost" :href="routeUrl('/register')">注册</a>
+    <a v-if="user" class="btn minimal-btn-primary" :href="routeUrl('/user')">用户后台</a>
+    <a v-if="canAccessAdmin" class="btn minimal-btn-ghost" :href="routeUrl(adminUrl)">管理后台</a>
+    <a class="btn minimal-btn-ghost" href="https://shua-xmzkj.apifox.cn/" target="_blank" rel="noopener">接口文档</a>
+  </div>
+
+  <div class="minimal-features section-gap">
+    <div class="minimal-feature"><strong>秒速到账</strong><span>下单后立即处理</span></div>
+    <div class="minimal-feature"><strong>安全稳定</strong><span>真实用户数据</span></div>
+    <div class="minimal-feature"><strong>价格优惠</strong><span>低于同行价格</span></div>
+    <div class="minimal-feature"><strong>API对接</strong><span>开放接口支持</span></div>
+  </div>
+
+  <div class="minimal-groups section-gap" v-if="settings.community_group_qq || (canShowSupportGroup && settings.support_group_qq)">
+    <div v-if="settings.community_group_qq" class="minimal-group-item"><span>交流群</span><strong>{{ settings.community_group_qq }}</strong><button class="btn sm" @click="openGroup('community')">加入</button></div>
+    <div v-if="canShowSupportGroup && settings.support_group_qq" class="minimal-group-item"><span>售后群</span><strong>{{ settings.support_group_qq }}</strong><button class="btn sm" @click="openGroup('support')">加入</button></div>
+  </div>
+
+  <div class="minimal-footer section-gap">
+    <a v-if="settings.icp_beian_no" href="https://beian.miit.gov.cn" target="_blank" rel="noopener">{{ settings.icp_beian_no }}</a>
+    <span v-if="settings.public_security_beian_no">网安备案：{{ settings.public_security_beian_no }}</span>
+  </div>
+</div>
+</template>
+
+<!-- Template: business -->
+<template v-if="settings.home_template === 'business'">
+<div class="tpl-business">
+  <div class="business-hero">
+    <div class="business-hero-bg"></div>
+    <div class="business-hero-content">
+      <h1>{{ site.name }}</h1>
+      <p class="business-subtitle">专业的企业级速刷解决方案</p>
+      <div class="business-hero-actions">
+        <a v-if="!user" class="btn business-btn-primary" :href="routeUrl('/login')">立即登录</a>
+        <a v-if="!user" class="btn business-btn-secondary" :href="routeUrl('/register')">注册账号</a>
+        <a v-if="user" class="btn business-btn-primary" :href="routeUrl('/user')">进入控制台</a>
+        <a v-if="canAccessAdmin" class="btn business-btn-secondary" :href="routeUrl(adminUrl)">管理后台</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="business-metrics section-gap">
+    <div class="business-metric-card">
+      <div class="business-metric-icon">📦</div>
+      <div class="business-metric-info"><span class="business-metric-num">{{ homeStats.product_count || 0 }}</span><span class="business-metric-label">商品总数</span></div>
+    </div>
+    <div class="business-metric-card">
+      <div class="business-metric-icon">📋</div>
+      <div class="business-metric-info"><span class="business-metric-num">{{ homeStats.order_count || 0 }}</span><span class="business-metric-label">订单总数</span></div>
+    </div>
+    <div class="business-metric-card">
+      <div class="business-metric-icon">📊</div>
+      <div class="business-metric-info"><span class="business-metric-num">{{ money(homeStats.total_quantity || 0) }}</span><span class="business-metric-label">总下单数</span></div>
+    </div>
+    <div class="business-metric-card">
+      <div class="business-metric-icon">🔗</div>
+      <div class="business-metric-info"><span class="business-metric-num">{{ boolText(settings.api_order_enabled) }}</span><span class="business-metric-label">API对接</span></div>
+    </div>
+  </div>
+
+  <div class="business-services section-gap">
+    <h2 class="business-section-title">我们的服务</h2>
+    <div class="business-service-grid">
+      <div class="business-service-card">
+        <div class="business-service-icon">⚡</div>
+        <h3>在线下单</h3>
+        <p>支持多种商品类型，实时下单，秒速处理。</p>
+        <a :href="routeUrl(user ? '/user' : '/login')" class="btn business-btn-sm">立即体验</a>
+      </div>
+      <div class="business-service-card">
+        <div class="business-service-icon">🔍</div>
+        <h3>实时查单</h3>
+        <p>订单状态实时更新，处理进度一目了然。</p>
+        <a :href="routeUrl(user ? '/user/orders' : '/login')" class="btn business-btn-sm">查看订单</a>
+      </div>
+      <div class="business-service-card">
+        <div class="business-service-icon">🔌</div>
+        <h3>API对接</h3>
+        <p>开放标准接口，轻松集成到你的平台。</p>
+        <a href="https://shua-xmzkj.apifox.cn/" target="_blank" rel="noopener" class="btn business-btn-sm">查看文档</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="business-advantages section-gap">
+    <h2 class="business-section-title">为什么选择我们</h2>
+    <div class="business-advantage-grid">
+      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>秒速到账，无需等待</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>真实数据，安全稳定</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>价格优惠，性价比高</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>7×24 小时社群支持</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>支持卡密兑换功能</span></div>
+      <div class="business-advantage-item"><span class="business-advantage-check">✓</span><span>完善的API文档</span></div>
+    </div>
+  </div>
+
+  <div class="business-contact section-gap">
+    <div class="business-contact-card">
+      <h3>加入我们的社群</h3>
+      <div class="business-contact-items">
+        <div v-if="settings.community_group_qq" class="business-contact-item"><span>用户交流群</span><strong>{{ settings.community_group_qq }}</strong><button class="btn business-btn-sm" @click="openGroup('community')">加入</button></div>
+        <div v-if="canShowSupportGroup && settings.support_group_qq" class="business-contact-item"><span>售后支持群</span><strong>{{ settings.support_group_qq }}</strong><button class="btn business-btn-sm" @click="openGroup('support')">加入</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="business-footer section-gap">
+    <div class="business-beian">
+      <a v-if="settings.icp_beian_no" href="https://beian.miit.gov.cn" target="_blank" rel="noopener">{{ settings.icp_beian_no }}</a>
+      <span v-if="settings.public_security_beian_no" class="business-psb">网安备案：{{ settings.public_security_beian_no }}</span>
+    </div>
+    <div class="business-copyright">© {{ new Date().getFullYear() }} {{ site.name }} All Rights Reserved</div>
+  </div>
+</div>
+</template>
+
+</section>
+
 
     <section v-else-if="routeMode === 'login'">
       <div class="login-shell">
@@ -1505,6 +1628,7 @@ __CUSTOM_HEAD__
                   <div class="field"><label>网安备案号</label><input v-model.trim="settingsForm.public_security_beian_no" placeholder="例如 粤公网安备 44000000000000号"></div>
                   <div class="field full"><label>SEO 页脚</label><textarea v-model.trim="settingsForm.seo_footer"></textarea></div>
                   <div class="field"><label>额度名称</label><input v-model.trim="settingsForm.currency_name" placeholder="如 速刷币"></div>
+<div class="field"><label>首页模板</label><select v-model="settingsForm.home_template"><option value="default">默认模板</option><option value="modern">现代风格</option><option value="minimal">极简风格</option><option value="business">商务风格</option></select><div class="tiny">切换后刷新首页查看效果。</div></div>
                   <div class="field"><label>说说图片来源</label><select v-model="settingsForm.feed_image_mode"><option value="self_proxy">自己服务器代理</option><option value="upstream_proxy">上游代理链接</option></select></div>
                 </div>
                 <div class="auth-footnote section-gap">备案号会显示在系统首页底部中央。ICP备案号会链接到 <span class="code-inline">https://beian.miit.gov.cn</span>，请务必填写工信部实际核发编号；未悬挂、填写错误或链接不正确可能面临责令整改、罚款或备案注销风险。网安备案号请填写实际核发内容。</div>
@@ -1970,7 +2094,7 @@ function defaultThemeConfig() {
 function emptySettingsForm() {
   return {
     site_name: '', site_keywords: '', site_description: '', site_favicon: '', site_logo: '', seo_footer: '', custom_css: '', custom_js: '', custom_resource_urls: [], currency_name: '额度', admin_path: '/admin', community_group_qq: '', support_group_qq: '', icp_beian_no: '', public_security_beian_no: '',
-    frontend_order_enabled: 1, api_order_enabled: 1, feed_image_mode: 'self_proxy',
+    frontend_order_enabled: 1, api_order_enabled: 1, feed_image_mode: 'self_proxy', home_template: 'default',
     register_need_email: 0, register_need_mobile: 0, register_need_image_captcha: 1, register_need_geetest: 0, register_need_sms_code: 0, register_need_email_code: 0,
     login_need_sms: 0, login_need_email: 0, login_need_geetest: 0, login_need_image_captcha: 1,
     default_register_strategy_user: 0, default_register_strategy_agent: 0,
