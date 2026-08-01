@@ -1,10 +1,9 @@
 {
-  "version": "v1.0.3",
+  "version": "v1.0.4",
   "name": "粥粥速刷系统",
   "features": [
-    "适配 GitHub/Gitee/GitLab 远程仓库版本检测",
-    "一键更新改用 Symfony Process 组件，更安全",
-    "未安装依赖时优雅降级，不影响系统使用"
+    "删除 server/ai-skills 目录",
+    "版本更新至 1.0.4"
   ],
   "repository": "http://localhost:3000/xmz/sushua"
 }
