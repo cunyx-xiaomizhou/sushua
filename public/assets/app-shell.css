@@ -258,10 +258,10 @@ html,body{max-width:100%;overflow-x:hidden}
 .tpl-modern { max-width: 100%; }
 .modern-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; padding: 60px 0; }
 .modern-badge { display: inline-block; padding: 8px 16px; background: color-mix(in srgb, var(--primary) 12%, var(--surface)); color: var(--primary); border-radius: 999px; font-weight: 700; font-size: 14px; margin-bottom: 16px; }
-.modern-title { font-size: 48px; line-height: 1.1; margin: 0 0 20px; font-weight: 900; background: linear-gradient(135deg, var(--primary), var(--success)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.modern-title { font-size: 48px; line-height: 1.1; margin: 0 0 20px; font-weight: 900; color: var(--primary); }
 .modern-desc { font-size: 18px; color: var(--muted); line-height: 1.6; margin: 0 0 32px; }
 .modern-actions { display: flex; gap: 14px; flex-wrap: wrap; }
-.modern-btn-primary { background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 80%, var(--success))); color: #fff !important; font-weight: 800; padding: 14px 28px; border-radius: 14px; border: 0; box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 30%, transparent); }
+.modern-btn-primary { background: var(--primary); color: #fff !important; font-weight: 800; padding: 14px 28px; border-radius: 14px; border: 0; box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 30%, transparent); }
 .modern-btn-outline { background: transparent; color: var(--primary) !important; font-weight: 800; padding: 14px 28px; border-radius: 14px; border: 2px solid var(--primary); }
 .modern-stats-card { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 32px; box-shadow: var(--shadow); display: grid; gap: 24px; }
 .modern-stat-item { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
@@ -277,7 +277,7 @@ html,body{max-width:100%;overflow-x:hidden}
 .modern-feature-card h3 { margin: 0 0 10px; font-size: 18px; }
 .modern-feature-card p { margin: 0; color: var(--muted); font-size: 14px; }
 .modern-cta { padding: 40px 0; }
-.modern-cta-card { background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 80%, var(--success))); border-radius: 24px; padding: 48px; text-align: center; color: #fff; }
+.modern-cta-card { background: var(--primary); border-radius: 24px; padding: 48px; text-align: center; color: #fff; }
 .modern-cta-card h2 { margin: 0 0 12px; font-size: 28px; }
 .modern-cta-card p { margin: 0 0 24px; opacity: 0.9; }
 .modern-cta-actions { display: flex; justify-content: center; gap: 14px; }
@@ -309,7 +309,7 @@ html,body{max-width:100%;overflow-x:hidden}
 /* Business Template */
 .tpl-business { max-width: 100%; }
 .business-hero { position: relative; padding: 80px 0 60px; text-align: center; overflow: hidden; }
-.business-hero-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--surface)), color-mix(in srgb, var(--success) 8%, var(--surface))); z-index: 0; }
+.business-hero-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--primary) 8%, var(--surface)); z-index: 0; }
 .business-hero-content { position: relative; z-index: 1; }
 .business-hero h1 { font-size: 48px; margin: 0 0 16px; }
 .business-subtitle { font-size: 20px; color: var(--muted); margin: 0 0 32px; }
