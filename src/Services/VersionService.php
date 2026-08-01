@@ -97,13 +97,15 @@ final class VersionService
 
     private function fetchRemoteVersion(): ?array
     {
-        $remote = $this->originRemote();
-        if ($remote === null) {
+        $remoteInfo = $this->originRemote();
+        if ($remoteInfo === null) {
             throw new RuntimeException('无法从 .git/config 解析远程仓库地址，请确保配置了 origin 远程仓库。');
         }
-        [$host, $owner, $repo] = $remote;
-        $apiUrl = $host . '/api/v1/repos/' . rawurlencode($owner) . '/' . rawurlencode($repo) . '/contents/version.json?ref=main';
-        $payload = $this->requestJson($apiUrl);
+        
+        [$host, $owner, $repo, $platform] = $remoteInfo;
+        $apiUrl = $this->buildApiUrl($host, $owner, $repo, $platform);
+        
+        $payload = $this->requestJson($apiUrl, $platform);
         if (empty($payload)) {
             throw new RuntimeException('无法连接到远程仓库 API：' . $apiUrl);
         }
@@ -124,41 +126,113 @@ final class VersionService
         $config = (string) @file_get_contents(base_path('.git/config'));
         if ($config === '') return null;
         
-        // Try origin first, then upstream
         foreach (['origin', 'upstream'] as $remoteName) {
             $pattern = '/\[remote "' . preg_quote($remoteName, '/') . '"\][^\[]*?\n\s*url\s*=\s*(\S+)/s';
             if (preg_match($pattern, $config, $match)) {
                 $url = trim($match[1]);
-                if (preg_match('#^(https?)://([^/]+)(?:/([^/]+)/([^/]+?))(?:\.git)?$#i', $url, $parts)) {
-                    return [$parts[1] . '://' . $parts[2], $parts[3], $parts[4]];
+                $parsed = $this->parseRemoteUrl($url);
+                if ($parsed !== null) {
+                    return $parsed;
                 }
             }
         }
         return null;
     }
 
-    private function requestJson(string $url): array
+    private function parseRemoteUrl(string $url): ?array
+    {
+        // SSH format: git@gitee.com:owner/repo.git or git@github.com:owner/repo.git
+        if (preg_match('#^git@([^:]+):([^/]+)/([^/]+?)(?:\.git)?$#i', $url, $parts)) {
+            $host = $parts[1];
+            $owner = $parts[2];
+            $repo = $parts[3];
+            $platform = $this->detectPlatform($host);
+            return ['https://' . $host, $owner, $repo, $platform];
+        }
+        
+        // HTTP/HTTPS format
+        if (preg_match('#^(https?)://([^/]+)(?:/([^/]+)/([^/]+?))(?:\.git)?$#i', $url, $parts)) {
+            $host = $parts[2];
+            $owner = $parts[3];
+            $repo = $parts[4];
+            $platform = $this->detectPlatform($host);
+            return [$parts[1] . '://' . $host, $owner, $repo, $platform];
+        }
+        
+        return null;
+    }
+
+    private function detectPlatform(string $host): string
+    {
+        $host = strtolower($host);
+        if (strpos($host, 'github.com') !== false) return 'github';
+        if (strpos($host, 'gitee.com') !== false) return 'gitee';
+        if (strpos($host, 'gitlab.com') !== false) return 'gitlab';
+        return 'gitea'; // 默认当作 Gitea
+    }
+
+    private function buildApiUrl(string $host, string $owner, string $repo, string $platform): string
+    {
+        $ownerEncoded = rawurlencode($owner);
+        $repoEncoded = rawurlencode($repo);
+        
+        switch ($platform) {
+            case 'github':
+                // GitHub API: https://api.github.com/repos/{owner}/{repo}/contents/{path}
+                return 'https://api.github.com/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/version.json?ref=main';
+                
+            case 'gitee':
+                // Gitee API: https://gitee.com/api/v5/repos/{owner}/{repo}/contents/{path}
+                return 'https://gitee.com/api/v5/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/version.json?ref=main';
+                
+            case 'gitlab':
+                // GitLab API: https://gitlab.com/api/v4/projects/{owner}%2F{repo}/repository/files/{path}
+                return 'https://gitlab.com/api/v4/projects/' . $ownerEncoded . '%2F' . $repoEncoded . '/repository/files/version.json?ref=main';
+                
+            case 'gitea':
+            default:
+                // Gitea API: {host}/api/v1/repos/{owner}/{repo}/contents/{path}
+                return $host . '/api/v1/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/version.json?ref=main';
+        }
+    }
+
+    private function requestJson(string $url, string $platform = 'gitea'): array
     {
         $ch = curl_init($url);
         if ($ch === false) throw new RuntimeException('无法初始化远程版本请求');
+        
+        $headers = ['Accept: application/json', 'User-Agent: Sushua-Version-Checker'];
+        
+        // GitHub API 需要特殊的 User-Agent
+        if ($platform === 'github') {
+            $headers = ['Accept: application/vnd.github.v3+json', 'User-Agent: Sushua-Version-Checker'];
+        }
+        
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTPHEADER => ['Accept: application/json', 'User-Agent: Sushua-Version-Checker'],
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_SSL_VERIFYPEER => true,
         ]);
+        
         apply_curl_ssl_defaults($ch);
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $error = curl_error($ch);
         curl_close($ch);
+        
         if ($body === false) {
             throw new RuntimeException('cURL 请求失败：' . $error);
+        }
+        if ($code === 404) {
+            throw new RuntimeException('远程仓库中未找到 version.json 文件，请确保远程仓库存在该文件。');
         }
         if ($code < 200 || $code >= 300) {
             throw new RuntimeException('远程服务器返回 HTTP ' . $code);
         }
+        
         $data = json_decode((string) $body, true);
         return is_array($data) ? $data : [];
     }
