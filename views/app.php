@@ -1785,6 +1785,15 @@ __CUSTOM_HEAD__
                 <div v-if="adminState.version.has_update && adminState.version.can_update" class="section-gap">
                   <button class="btn primary" @click="updateVersion" :disabled="adminState.version.updating">{{ adminState.version.updating ? '正在更新...' : '一键更新' }}</button>
                 </div>
+                <div v-if="adminState.version.manual_command" class="section-gap">
+                  <div class="placeholder-card">
+                    <div style="margin-bottom:8px">手动更新命令：</div>
+                    <div class="code-box" style="display:flex;align-items:center;justify-content:space-between">
+                      <code style="flex:1;word-break:break-all">{{ adminState.version.manual_command }}</code>
+                      <button class="btn sm ghost" @click="copyManualCommand" style="margin-left:10px;white-space:nowrap">复制</button>
+                    </div>
+                  </div>
+                </div>
                 <div class="section-gap">
   <h3>当前版本特性</h3>
   <ul class="feature-list"><li v-for="(feature,index) in currentFeatures" :key="index">{{ feature }}</li></ul>
@@ -3609,6 +3618,62 @@ const app = Vue.createApp({
         this.adminState.version = Object.assign({}, this.adminState.version, { current: this.currentVersion, checked_at: new Date().toISOString(), message: error.message || '版本检测失败' });
         return null;
       }
+    },
+    copyManualCommand() {
+      const command = this.adminState.version.manual_command || '';
+      if (!command) return;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(command).then(() => {
+          this.notify('命令已复制到剪贴板', 'success');
+        }).catch(() => {
+          this.fallbackCopy(command);
+        });
+      } else {
+        this.fallbackCopy(command);
+      }
+    },
+    fallbackCopy(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        this.notify('命令已复制到剪贴板', 'success');
+      } catch (e) {
+        this.notify('复制失败，请手动复制', 'error');
+      }
+      document.body.removeChild(textarea);
+    },
+    copyManualCommand() {
+      const command = this.adminState.version.manual_command || '';
+      if (!command) return;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(command).then(() => {
+          this.notify('命令已复制到剪贴板', 'success');
+        }).catch(() => {
+          this.fallbackCopy(command);
+        });
+      } else {
+        this.fallbackCopy(command);
+      }
+    },
+    fallbackCopy(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        this.notify('命令已复制到剪贴板', 'success');
+      } catch (e) {
+        this.notify('复制失败，请手动复制', 'error');
+      }
+      document.body.removeChild(textarea);
     },
     async updateVersion() {
       if (!await this.confirmAction('确定要更新到最新版本吗？建议先备份数据库和配置。', { title: '更新确认', confirmText: '确认更新' })) return;

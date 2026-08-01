@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Sushua\Services;
+namespace SushuaServices;
 
 use RuntimeException;
 
@@ -35,7 +35,8 @@ final class VersionService
     {
         $current = $this->current();
         $gitAvailable = is_dir(base_path('.git'));
-        $canUpdate = $gitAvailable && $this->canUseGitProcess();
+        $updateMethod = $this->detectUpdateMethod();
+        $canUpdate = $gitAvailable && $updateMethod !== 'none';
         
         $result = [
             'current' => $current,
@@ -43,8 +44,10 @@ final class VersionService
             'has_update' => false,
             'git_available' => $gitAvailable,
             'can_update' => $canUpdate,
+            'update_method' => $updateMethod,
             'checked_at' => date('Y-m-d H:i:s'),
             'message' => '',
+            'manual_command' => '',
         ];
         
         if (!$gitAvailable) {
@@ -52,13 +55,9 @@ final class VersionService
             return $result;
         }
         
-        if (!$this->canUseGitProcess()) {
-            $procStatus = $this->getProcOpenStatus();
-            if (strpos($procStatus, '禁用') !== false) {
-                $result['message'] = $procStatus . '。如需使用一键更新，请修改 php.ini 中的 disable_functions 配置。';
-            } else {
-                $result['message'] = '服务器未安装 Symfony Process 组件，一键更新功能不可用。';
-            }
+        if ($updateMethod === 'none') {
+            $result['message'] = 'proc_open 和 exec 函数均不可用，无法使用一键更新。请解禁其中一个函数，或使用下方命令手动更新。';
+            $result['manual_command'] = 'cd ' . base_path() . ' && git pull origin main';
             return $result;
         }
         
@@ -101,13 +100,10 @@ final class VersionService
             throw new RuntimeException('项目根目录未检测到 .git，无法进行在线更新。');
         }
         
-        if (!$this->canUseGitProcess()) {
-            $procStatus = $this->getProcOpenStatus();
-            if (strpos($procStatus, '禁用') !== false) {
-                throw new RuntimeException($procStatus . '。如需使用一键更新，请修改 php.ini 中的 disable_functions 配置。');
-            } else {
-                throw new RuntimeException('服务器未安装 Symfony Process 组件，无法执行一键更新。请运行 composer require symfony/process 安装依赖。');
-            }
+        $updateMethod = $this->detectUpdateMethod();
+        if ($updateMethod === 'none') {
+            $manualCommand = 'cd ' . base_path() . ' && git pull origin main';
+            throw new RuntimeException('proc_open 和 exec 函数均不可用，无法使用一键更新。请手动执行：' . $manualCommand);
         }
         
         $remote = $this->fetchRemoteVersion();
@@ -123,26 +119,11 @@ final class VersionService
         $root = base_path();
         
         try {
-            $processClass = $this->getProcessClass();
-            
-            // 执行 git fetch
-            $fetchProcess = new $processClass(['git', 'fetch', 'origin', 'main'], $root);
-            $fetchProcess->setTimeout(120);
-            $fetchProcess->run();
-            
-            if (!$fetchProcess->isSuccessful()) {
-                throw new RuntimeException('git fetch 失败：' . $fetchProcess->getErrorOutput());
+            if ($updateMethod === 'proc_open') {
+                $this->updateViaProcess($root);
+            } else {
+                $this->updateViaExec($root);
             }
-            
-            // 执行 git reset
-            $resetProcess = new $processClass(['git', 'reset', '--hard', 'origin/main'], $root);
-            $resetProcess->setTimeout(120);
-            $resetProcess->run();
-            
-            if (!$resetProcess->isSuccessful()) {
-                throw new RuntimeException('git reset 失败：' . $resetProcess->getErrorOutput());
-            }
-            
         } catch (\Throwable $e) {
             if ($e instanceof RuntimeException) {
                 throw $e;
@@ -158,6 +139,91 @@ final class VersionService
             'message' => '更新成功，当前版本：' . ($newVersion['version'] ?? '未知'),
             'new_version' => $newVersion,
         ];
+    }
+
+    private function detectUpdateMethod(): string
+    {
+        // 优先检查 proc_open
+        if ($this->canUseProcOpen()) {
+            return 'proc_open';
+        }
+        
+        // 其次检查 exec
+        if ($this->canUseExec()) {
+            return 'exec';
+        }
+        
+        return 'none';
+    }
+
+    private function canUseProcOpen(): bool
+    {
+        // 检查 proc_open 是否被禁用
+        if (!function_exists('proc_open')) {
+            return false;
+        }
+        
+        // 检查 disable_functions 配置
+        $disabledFunctions = array_map('trim', explode(',', ini_get('disable_functions')));
+        if (in_array('proc_open', $disabledFunctions, true)) {
+            return false;
+        }
+        
+        // 尝试加载 Composer autoloader
+        $autoloadFile = base_path('vendor/autoload.php');
+        if (file_exists($autoloadFile) && !class_exists('Symfony\Component\Process\Process')) {
+            require_once $autoloadFile;
+        }
+        
+        return class_exists('Symfony\Component\Process\Process');
+    }
+
+    private function canUseExec(): bool
+    {
+        if (!function_exists('exec')) {
+            return false;
+        }
+        
+        $disabledFunctions = array_map('trim', explode(',', ini_get('disable_functions')));
+        return !in_array('exec', $disabledFunctions, true);
+    }
+
+    private function updateViaProcess(string $root): void
+    {
+        $processClass = 'Symfony\Component\Process\Process';
+        
+        // 执行 git fetch
+        $fetchProcess = new $processClass(['git', 'fetch', 'origin', 'main'], $root);
+        $fetchProcess->setTimeout(120);
+        $fetchProcess->run();
+        
+        if (!$fetchProcess->isSuccessful()) {
+            throw new RuntimeException('git fetch 失败：' . $fetchProcess->getErrorOutput());
+        }
+        
+        // 执行 git reset
+        $resetProcess = new $processClass(['git', 'reset', '--hard', 'origin/main'], $root);
+        $resetProcess->setTimeout(120);
+        $resetProcess->run();
+        
+        if (!$resetProcess->isSuccessful()) {
+            throw new RuntimeException('git reset 失败：' . $resetProcess->getErrorOutput());
+        }
+    }
+
+    private function updateViaExec(string $root): void
+    {
+        // 执行 git fetch
+        exec('cd ' . escapeshellarg($root) . ' && git fetch origin main 2>&1', $output, $returnCode);
+        if ($returnCode !== 0) {
+            throw new RuntimeException('git fetch 失败：' . implode("\n", $output));
+        }
+        
+        // 执行 git reset
+        exec('cd ' . escapeshellarg($root) . ' && git reset --hard origin/main 2>&1', $output, $returnCode);
+        if ($returnCode !== 0) {
+            throw new RuntimeException('git reset 失败：' . implode("\n", $output));
+        }
     }
 
     private function getVersionData(string $version): ?array
@@ -186,47 +252,6 @@ final class VersionService
         } catch (\Throwable $e) {
             return null;
         }
-    }
-
-    private function canUseGitProcess(): bool
-    {
-        // 检查 proc_open 是否被禁用
-        if (!function_exists('proc_open')) {
-            return false;
-        }
-        
-        // 检查 disable_functions 配置
-        $disabledFunctions = array_map('trim', explode(',', ini_get('disable_functions')));
-        if (in_array('proc_open', $disabledFunctions, true)) {
-            return false;
-        }
-        
-        // 尝试加载 Composer autoloader
-        $autoloadFile = base_path('vendor/autoload.php');
-        if (file_exists($autoloadFile) && !class_exists('Symfony\Component\Process\Process')) {
-            require_once $autoloadFile;
-        }
-        
-        return class_exists('Symfony\Component\Process\Process');
-    }
-
-    private function getProcOpenStatus(): string
-    {
-        if (!function_exists('proc_open')) {
-            return 'proc_open 函数不可用（可能被禁用）';
-        }
-        
-        $disabledFunctions = array_map('trim', explode(',', ini_get('disable_functions')));
-        if (in_array('proc_open', $disabledFunctions, true)) {
-            return 'proc_open 函数已被禁用，请从 php.ini 的 disable_functions 配置中移除';
-        }
-        
-        return 'proc_open 函数可用';
-    }
-
-    private function getProcessClass(): string
-    {
-        return 'Symfony\Component\Process\Process';
     }
 
     private function fetchRemoteVersion(): ?array
@@ -261,7 +286,7 @@ final class VersionService
         if ($config === '') return null;
         
         foreach (['origin', 'upstream'] as $remoteName) {
-            $pattern = '/\[remote "' . preg_quote($remoteName, '/') . '"\][^\[]*?\n\s*url\s*=\s*(\S+)/s';
+            $pattern = '/\[remote "' . preg_quote($remoteName, '/') . '"\]\[^\[]*?\n\s*url\s*=\s*(\S+)/s';
             if (preg_match($pattern, $config, $match)) {
                 $url = trim($match[1]);
                 $parsed = $this->parseRemoteUrl($url);
