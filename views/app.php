@@ -2548,7 +2548,15 @@ const app = Vue.createApp({
       return '≈' + (amount / 10000).toFixed(2) + '元';
     },
     formatDate: function (value) {
-      return value ? String(value) : '-';
+      if (!value) return '-';
+      try {
+        const d = new Date(value);
+        if (isNaN(d.getTime())) return String(value);
+        const pad = function (n) { return String(n).padStart(2, '0'); };
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+      } catch (e) {
+        return String(value);
+      }
     },
     formatFeedTime: function (item) {
       const raw = item && typeof item === 'object' ? item : {};

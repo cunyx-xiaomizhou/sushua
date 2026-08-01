@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
 namespace Sushua\Services;
@@ -37,7 +37,7 @@ final class VersionService
             'has_update' => false,
             'git_available' => $gitAvailable,
             'can_update' => $gitAvailable,
-            'checked_at' => date(DATE_ATOM),
+            'checked_at' => date('Y-m-d H:i:s'),
             'message' => $gitAvailable
                 ? '正在读取远程版本清单。'
                 : '项目根目录未检测到 .git，在线版本检测不可用。',
@@ -50,11 +50,11 @@ final class VersionService
         try {
             $remote = $this->fetchRemoteVersion();
         } catch (\Throwable $e) {
-            $result['message'] = '在线版本检测暂时不可用。';
+            $result['message'] = '在线版本检测暂时不可用：' . $e->getMessage();
             return $result;
         }
         if ($remote === null) {
-            $result['message'] = '暂时无法读取远程版本清单。';
+            $result['message'] = '暂时无法读取远程版本清单，请检查 .git/config 中的远程仓库配置。';
             return $result;
         }
         $result['remote'] = $remote;
@@ -72,7 +72,7 @@ final class VersionService
         }
         $remote = $this->fetchRemoteVersion();
         if ($remote === null) {
-            throw new RuntimeException('暂时无法读取远程版本清单。');
+            throw new RuntimeException('暂时无法读取远程版本清单，请检查 .git/config 中的远程仓库配置。');
         }
         $hasUpdate = $this->compareVersions((string) ($remote['version'] ?? ''), $this->currentVersion()) > 0;
         if (!$hasUpdate) {
@@ -98,24 +98,43 @@ final class VersionService
     private function fetchRemoteVersion(): ?array
     {
         $remote = $this->originRemote();
-        if ($remote === null) return null;
+        if ($remote === null) {
+            throw new RuntimeException('无法从 .git/config 解析远程仓库地址，请确保配置了 origin 远程仓库。');
+        }
         [$host, $owner, $repo] = $remote;
         $apiUrl = $host . '/api/v1/repos/' . rawurlencode($owner) . '/' . rawurlencode($repo) . '/contents/version.json?ref=main';
         $payload = $this->requestJson($apiUrl);
+        if (empty($payload)) {
+            throw new RuntimeException('无法连接到远程仓库 API：' . $apiUrl);
+        }
         $content = base64_decode((string) ($payload['content'] ?? ''), true);
-        if ($content === false) return null;
+        if ($content === false) {
+            throw new RuntimeException('无法解码远程 version.json 内容。');
+        }
         $version = json_decode($content, true);
-        return is_array($version) ? $version : null;
+        if (!is_array($version)) {
+            throw new RuntimeException('远程 version.json 格式无效。');
+        }
+        return $version;
     }
 
     private function originRemote(): ?array
     {
         if (!is_dir(base_path('.git'))) return null;
         $config = (string) @file_get_contents(base_path('.git/config'));
-        if ($config === '' || !preg_match('/\[remote "origin"\][^\[]*?\n\s*url\s*=\s*(\S+)/s', $config, $match)) return null;
-        $url = trim($match[1]);
-        if (!preg_match('#^(https?)://([^/]+)(?:/([^/]+)/([^/]+?))(?:\.git)?$#i', $url, $parts)) return null;
-        return [$parts[1] . '://' . $parts[2], $parts[3], $parts[4]];
+        if ($config === '') return null;
+        
+        // Try origin first, then upstream
+        foreach (['origin', 'upstream'] as $remoteName) {
+            $pattern = '/\[remote "' . preg_quote($remoteName, '/') . '"\][^\[]*?\n\s*url\s*=\s*(\S+)/s';
+            if (preg_match($pattern, $config, $match)) {
+                $url = trim($match[1]);
+                if (preg_match('#^(https?)://([^/]+)(?:/([^/]+)/([^/]+?))(?:\.git)?$#i', $url, $parts)) {
+                    return [$parts[1] . '://' . $parts[2], $parts[3], $parts[4]];
+                }
+            }
+        }
+        return null;
     }
 
     private function requestJson(string $url): array
@@ -125,15 +144,21 @@ final class VersionService
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 15,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 30,
             CURLOPT_HTTPHEADER => ['Accept: application/json', 'User-Agent: Sushua-Version-Checker'],
         ]);
         apply_curl_ssl_defaults($ch);
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $error = curl_error($ch);
         curl_close($ch);
-        if ($body === false || $code < 200 || $code >= 300) return [];
+        if ($body === false) {
+            throw new RuntimeException('cURL 请求失败：' . $error);
+        }
+        if ($code < 200 || $code >= 300) {
+            throw new RuntimeException('远程服务器返回 HTTP ' . $code);
+        }
         $data = json_decode((string) $body, true);
         return is_array($data) ? $data : [];
     }
