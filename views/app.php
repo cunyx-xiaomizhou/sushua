@@ -8,6 +8,7 @@
 <title>__SITE_NAME__</title>
 __SITE_FAVICON_TAG__
 <link rel="stylesheet" href="__PUBLIC_URL__/assets/app-shell.css">
+__CUSTOM_HEAD__
 <script src="__PUBLIC_URL__/assets/vendor/vue.global.prod.js"></script>
 <script src="__PUBLIC_URL__/assets/vendor/qrcode-generator.min.js"></script>
 <script src="__PUBLIC_URL__/assets/vendor/qqapi.js"></script>
@@ -1126,7 +1127,7 @@ __SITE_FAVICON_TAG__
                   <div class="subtle"><span>前台下单</span><label><input type="checkbox" v-model="product.allow_frontend_bool"> 允许</label></div>
                   <div class="subtle"><span>允许对接</span><label><input type="checkbox" v-model="product.allow_api_bool"> 允许</label></div>
                   <div class="subtle"><span>商品状态</span><label><input type="checkbox" v-model="product.enabled_bool"> 启用</label></div>
-                  <div class="subtle"><span>排序优先级</span><input v-model.number="product.sort_order" type="number" style="max-width:130px"><span class="tiny">数字越小越靠前</span></div>
+                  <div class="subtle product-sort-field"><span>排序优先级</span><div class="sort-input-wrap"><input v-model.number="product.sort_order" class="sort-priority-input" type="number" step="1" inputmode="numeric" aria-label="商品排序优先级"><span class="sort-hint">数字越小越靠前</span></div></div>
                   <div class="subtle"><span>范围</span><strong>{{ product.min_num }} - {{ product.max_num }} / 步长 {{ product.step_num }}</strong></div>
                 </div>
                 <div class="section-gap">
@@ -1470,15 +1471,15 @@ __SITE_FAVICON_TAG__
             </div>
           </div>
 
-          <div v-else-if="['settings-basic','settings-theme','settings-sms','settings-security','scheduled-tasks','exchange-rules'].includes(adminTab)">
+          <div v-else-if="['settings-basic','settings-theme','settings-sms','settings-security','settings-custom','settings-version','scheduled-tasks','exchange-rules'].includes(adminTab)">
             <div class="page-head">
               <div>
-                <h2>{{ {'settings-basic':'基础设置','settings-theme':'界面主题','settings-sms':'短信 / 邮件 / 验证','settings-security':'登录 / 注册 / 邀请','scheduled-tasks':'定时任务 API','exchange-rules':'商品兑换码规则'}[adminTab] }}</h2>
+                <h2>{{ {'settings-basic':'基础设置','settings-theme':'界面主题','settings-sms':'短信 / 邮件 / 验证','settings-security':'登录 / 注册 / 邀请','settings-custom':'自定义 CSS / JS','settings-version':'版本与更新','scheduled-tasks':'定时任务 API','exchange-rules':'商品兑换码规则'}[adminTab] }}</h2>
                 <p>当前页面仅显示所选设置分类，保存时会保留其他分类的现有配置。</p>
               </div>
               <div class="inline-actions">
-                <button v-if="adminTab !== 'scheduled-tasks'" class="btn primary" @click="saveSettings">保存系统设置</button>
-                <button class="btn ghost" @click="adminTab === 'scheduled-tasks' ? loadScheduledTaskConfig(true) : loadAdminSettings(true)">重新加载</button>
+                <button v-if="!['scheduled-tasks','settings-version'].includes(adminTab)" class="btn primary" @click="saveSettings">保存系统设置</button>
+                <button class="btn ghost" @click="reloadCurrentSettingsPage">{{ adminTab === 'settings-version' ? '重新检测' : '重新加载' }}</button>
               </div>
             </div>
             <div class="section-stack">
@@ -1638,6 +1639,26 @@ __SITE_FAVICON_TAG__
                   <div class="field"><label>兑换订单 Cookie 有效期（天）</label><input v-model.number="settingsForm.exchange_code_cookie_days" type="number" min="7" max="3650"><div class="tiny">允许 7～3650 天，默认 60 天。</div></div>
                 </div>
                 <div class="auth-footnote">生成兑换码时按“每张生成服务费 × 数量”收取服务费，默认 0 额度。兑换成功后，商品费用从兑换码创建者账户扣除，公式为：数量 ÷ 计价单位（最低步长） × 用户价格。系统内部按数据库唯一用户 ID 记账，不依赖可能重复的公开 UID。</div>
+              </div>
+
+              <div v-if="adminTab === 'settings-custom'" class="panel">
+                <h3>自定义页面样式与脚本</h3>
+                <div class="placeholder-card section-gap"><strong>安全提示</strong><div class="tiny">自定义 JavaScript 和第三方资源可以访问当前页面数据。请仅使用自己编写或确认可信的代码与资源链接；错误代码可能导致页面无法正常使用。</div></div>
+                <div class="form-grid section-gap">
+                  <div class="field full"><label>自定义 CSS</label><textarea v-model="settingsForm.custom_css" class="custom-code-editor" spellcheck="false" placeholder=".panel { border-radius: 20px; }"></textarea><div class="tiny">保存后应用到系统页面。请优先使用现有主题变量，避免硬编码颜色。</div></div>
+                  <div class="field full"><label>自定义 JavaScript</label><textarea v-model="settingsForm.custom_js" class="custom-code-editor" spellcheck="false" placeholder="document.documentElement.classList.add('my-effect');"></textarea><div class="tiny">脚本会在页面主体加载完成后执行，最大 200000 字节。</div></div>
+                </div>
+                <div class="section-gap"><div class="card-title"><div><h3>第三方资源链接</h3><div class="tiny">仅允许 HTTP/HTTPS 链接，最多 20 条；按列表顺序加载。</div></div><button type="button" class="btn sm ghost" @click="addCustomResource">新增资源</button></div>
+                  <div v-if="settingsForm.custom_resource_urls.length" class="editor-list section-gap"><div class="editor-row custom-resource-row" v-for="(resource,index) in settingsForm.custom_resource_urls" :key="index"><div class="field"><label>资源类型</label><select v-model="resource.type"><option value="css">CSS</option><option value="js">JavaScript</option></select></div><div class="field custom-resource-url"><label>资源链接</label><input v-model.trim="resource.url" type="url" placeholder="https://cdn.example.com/library.min.css"></div><button type="button" class="btn sm danger" @click="removeCustomResource(index)">删除</button></div></div>
+                  <div v-else class="placeholder-card section-gap">尚未添加第三方资源。</div>
+                </div>
+              </div>
+
+              <div v-if="adminTab === 'settings-version'" class="panel">
+                <div class="card-title"><div><h3>版本与在线更新</h3><div class="tiny">管理员每次进入后台时自动检测一次远程版本。</div></div><span class="badge" :class="adminState.version.has_update ? 'warning' : 'success'">{{ adminState.version.has_update ? '发现新版本' : '当前版本' }}</span></div>
+                <div class="info-grid section-gap"><div class="kv-box"><span class="tiny">当前版本</span><strong>{{ (adminState.version.current && adminState.version.current.version) || currentVersion.version || 'v1.0.0' }}</strong></div><div class="kv-box"><span class="tiny">远程版本</span><strong>{{ (adminState.version.remote && adminState.version.remote.version) || '未获取' }}</strong></div><div class="kv-box"><span class="tiny">Git 安装状态</span><strong>{{ adminState.version.git_available ? '可用' : '不可用' }}</strong></div><div class="kv-box"><span class="tiny">最近检测</span><strong>{{ formatDate(adminState.version.checked_at) }}</strong></div></div>
+                <div class="placeholder-card section-gap">{{ adminState.version.message || '尚未执行版本检测。' }}</div><div class="section-gap"><h3>{{ adminState.version.has_update ? '新版本特性' : '当前版本特性' }}</h3><ul class="feature-list"><li v-for="(feature,index) in versionFeatures" :key="index">{{ feature }}</li></ul></div>
+                <div class="auth-footnote section-gap">在线版本检测仅在项目根目录存在 <span class="code-inline">.git</span> 时可用。本系统不会调用 exec、shell_exec、system、proc_open 等命令执行函数，也不会用未经验证的压缩包覆盖代码。检测到更新后，请先备份数据库与配置，再通过服务器的 Git 部署流程更新。</div>
               </div>
 
               <div v-if="adminTab === 'scheduled-tasks'" class="panel">
@@ -1944,7 +1965,7 @@ function defaultThemeConfig() {
 }
 function emptySettingsForm() {
   return {
-    site_name: '', site_keywords: '', site_description: '', site_favicon: '', site_logo: '', seo_footer: '', currency_name: '额度', admin_path: '/admin', community_group_qq: '', support_group_qq: '', icp_beian_no: '', public_security_beian_no: '',
+    site_name: '', site_keywords: '', site_description: '', site_favicon: '', site_logo: '', seo_footer: '', custom_css: '', custom_js: '', custom_resource_urls: [], currency_name: '额度', admin_path: '/admin', community_group_qq: '', support_group_qq: '', icp_beian_no: '', public_security_beian_no: '',
     frontend_order_enabled: 1, api_order_enabled: 1, feed_image_mode: 'self_proxy',
     register_need_email: 0, register_need_mobile: 0, register_need_image_captcha: 1, register_need_geetest: 0, register_need_sms_code: 0, register_need_email_code: 0,
     login_need_sms: 0, login_need_email: 0, login_need_geetest: 0, login_need_image_captcha: 1,
@@ -1963,7 +1984,7 @@ function emptySettingsForm() {
 function settingsToForm(raw) {
   const form = emptySettingsForm();
   Object.keys(form).forEach(function (key) {
-    if (['smtp_config', 'geetest_config', 'sms_config', 'sms_headers_rows', 'sms_query_rows', 'sms_body_rows', 'invite_code_price_rules', 'theme_config'].includes(key)) return;
+    if (['smtp_config', 'geetest_config', 'sms_config', 'sms_headers_rows', 'sms_query_rows', 'sms_body_rows', 'invite_code_price_rules', 'theme_config', 'custom_resource_urls'].includes(key)) return;
     if (raw[key] !== undefined) form[key] = raw[key];
   });
   form.frontend_order_enabled = Number(raw.frontend_order_enabled ?? 1);
@@ -1998,6 +2019,8 @@ function settingsToForm(raw) {
     return { length: String(item.length || '6').trim(), price: Number(item.price || 0) };
   });
   form.theme_config = Object.assign(defaultThemeConfig(), parseJson(raw.theme_config, defaultThemeConfig()));
+  const resources = parseJson(raw.custom_resource_urls, []);
+  form.custom_resource_urls = Array.isArray(resources) ? resources.filter(function (item) { return item && typeof item === 'object'; }).map(function (item) { return { type: item.type === 'js' ? 'js' : 'css', url: String(item.url || '') }; }) : [];
   return form;
 }
 function formToSettingsPayload(form) {
@@ -2021,6 +2044,7 @@ function formToSettingsPayload(form) {
     return { length: String(item.length || '6').trim(), price: Number(item.price || 0) };
   });
   payload.theme_config = Object.assign({}, defaultThemeConfig(), payload.theme_config || {});
+  payload.custom_resource_urls = (payload.custom_resource_urls || []).map(function (item) { return { type: item.type === 'js' ? 'js' : 'css', url: String(item.url || '').trim() }; }).filter(function (item) { return item.url !== ''; });
   return payload;
 }
 function normalizeAdminProduct(product) {
@@ -2039,6 +2063,7 @@ const app = Vue.createApp({
     return {
       routeMode: BOOT.routeMode || 'home',
       site: BOOT.site || { name: '', description: '' },
+      currentVersion: BOOT.version || { version: 'v1.0.0', features: [] },
       settings: BOOT.settings || {},
       homeStats: BOOT.homeStats || { product_count: 0, order_count: 0, total_quantity: 0, items: [] },
       currency: BOOT.currency || '额度',
@@ -2080,7 +2105,7 @@ const app = Vue.createApp({
       adminMenuOpenKeys: { products: true, groups: true, users: true, orders: true, api: true, recharge: true, exchange: true, settings: true, logs: true },
       adminState: {
         dashboard: null, products: [], groups: [], users: [], userKeyword: '', orders: [], orderSearch: '', orderDetail: null, upstream: [], upstreamBalance: null, upstreamBalanceError: '', cards: [],
-        payments: { merchants: [], channels: [], recharge_orders: [] }, settingsRaw: {}, scheduledTasks: { system_key: '', products_endpoint: '', orders_endpoint: '' }, logs: [], logLevel: '', logChannel: '',
+        payments: { merchants: [], channels: [], recharge_orders: [] }, settingsRaw: {}, scheduledTasks: { system_key: '', products_endpoint: '', orders_endpoint: '' }, version: { current: null, remote: null, has_update: false, git_available: false, can_update: false, checked_at: '', message: '' }, logs: [], logLevel: '', logChannel: '',
         exchange: { codes: [], logs: [], filters: { product_id: '', status: '', redeemer_qq: '', sort: 'created_desc' } }
       },
       groupForm: emptyGroupForm(),
@@ -2115,6 +2140,10 @@ const app = Vue.createApp({
     },
     canShowSupportGroup: function () {
       return boolish(this.settings.can_show_support_group) && String(this.settings.support_group_qq || '').trim() !== '';
+    },
+    versionFeatures: function () {
+      const source = this.adminState.version.has_update && this.adminState.version.remote ? this.adminState.version.remote : (this.adminState.version.current || this.currentVersion || {});
+      return Array.isArray(source.features) && source.features.length ? source.features : ['暂无版本特性说明'];
     },
     userLoginNeedCaptcha: function () {
       return true;
@@ -2176,6 +2205,8 @@ const app = Vue.createApp({
           { key: 'settings-theme', label: '界面主题', description: '后台化所有颜色并支持导入导出。' },
           { key: 'settings-sms', label: '短信 / 邮件 / 极验', description: '配置腾讯云、阿里云、自定义 HTTP 与 SMTP。' },
           { key: 'settings-security', label: '登录 / 邀请 / 其他', description: '登录注册策略、邀请码规则和首页开关。' },
+          { key: 'settings-custom', label: '自定义 CSS / JS', description: '配置自定义样式、脚本和第三方资源。' },
+          { key: 'settings-version', label: '版本与更新', description: '检测新版本并查看版本特性。' },
           { key: 'scheduled-tasks', label: '定时任务 API', description: '管理外部定时调用密钥与接口。' }
         ] },
         { key: 'logs', label: '系统日志', children: [
@@ -3059,8 +3090,7 @@ const app = Vue.createApp({
       this.notify('密码修改成功', 'success');
     },
     async bootstrapAdmin() {
-      await this.loadAdminSettings(true);
-      await this.loadAdminGroups(true);
+      await Promise.all([this.loadAdminSettings(true), this.loadAdminGroups(true), this.checkVersion(false)]);
       await this.ensureAdminTab(this.adminTab, true);
     },
     adminParentKey: function (pageKey) {
@@ -3101,6 +3131,8 @@ const app = Vue.createApp({
         'settings-theme': () => this.loadAdminSettings(force),
         'settings-sms': () => this.loadAdminSettings(force),
         'settings-security': () => this.loadAdminSettings(force),
+        'settings-custom': () => this.loadAdminSettings(force),
+        'settings-version': () => this.checkVersion(force),
         'scheduled-tasks': () => this.loadScheduledTaskConfig(force),
         'logs-list': () => this.loadAdminLogs(force)
       };
@@ -3420,6 +3452,27 @@ const app = Vue.createApp({
       this.adminState.scheduledTasks = Object.assign({ system_key: '', products_endpoint: '', orders_endpoint: '' }, data || {});
       this.notify('系统密钥已重置，请立即更新所有定时任务', 'success');
     },
+    async checkVersion(force) {
+      if (!force && this.adminState.version.checked_at) return this.adminState.version;
+      try {
+        const data = await this.fetchJson(this.adminUrl + '/api/version/check', { method: 'GET', loadingText: '正在检测新版本...', silent: !force });
+        this.adminState.version = Object.assign({ current: this.currentVersion, remote: null, has_update: false, git_available: false, can_update: false, checked_at: '', message: '' }, data || {});
+        return data;
+      } catch (error) {
+        this.adminState.version = Object.assign({}, this.adminState.version, { current: this.currentVersion, checked_at: new Date().toISOString(), message: error.message || '版本检测失败' });
+        return null;
+      }
+    },
+    async reloadCurrentSettingsPage() {
+      if (this.adminTab === 'scheduled-tasks') return this.loadScheduledTaskConfig(true);
+      if (this.adminTab === 'settings-version') return this.checkVersion(true);
+      return this.loadAdminSettings(true);
+    },
+    addCustomResource() {
+      if (this.settingsForm.custom_resource_urls.length >= 20) return this.notify('外部资源链接最多允许 20 条', 'warning');
+      this.settingsForm.custom_resource_urls.push({ type: 'css', url: '' });
+    },
+    removeCustomResource(index) { this.settingsForm.custom_resource_urls.splice(index, 1); },
     async loadAdminSettings(force) {
       const raw = await this.fetchJson(this.adminUrl + '/api/settings', { method: 'GET', loadingText: '正在加载系统设置...', silent: !force });
       this.adminState.settingsRaw = raw || {};
@@ -3467,5 +3520,6 @@ const app = Vue.createApp({
 });
 app.mount('#app');
 </script>
+__CUSTOM_SCRIPT__
 </body>
 </html>

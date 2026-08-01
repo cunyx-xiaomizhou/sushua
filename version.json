@@ -1,0 +1,10 @@
+{
+  "version": "v1.0.0",
+  "name": "粥粥速刷系统",
+  "features": [
+    "支持用户组商品固定价格与商品优先级排序",
+    "支持后台自定义 CSS、JavaScript 与第三方资源链接",
+    "支持后台自动检测远程版本并展示版本特性"
+  ],
+  "repository": "http://localhost:3000/xmz/sushua"
+}

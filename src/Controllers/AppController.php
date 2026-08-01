@@ -21,6 +21,7 @@ use Sushua\Services\ScheduledTaskService;
 use Sushua\Services\SettingsService;
 use Sushua\Services\UpstreamClient;
 use Sushua\Services\UserGroupService;
+use Sushua\Services\VersionService;
 use Sushua\Support\Logger;
 
 final class AppController
@@ -72,6 +73,30 @@ final class AppController
         $siteLogo = trim((string) $this->settings->get('site_logo', ''));
         $seoFooter = trim((string) $this->settings->get('seo_footer', ''));
         $adminPath = (string) $this->settings->get('admin_path', '/admin');
+        $customCss = (string) $this->settings->get('custom_css', '');
+        $customJs = (string) $this->settings->get('custom_js', '');
+        $customResources = $this->normalizeCustomResources(
+            $this->settings->getJson('custom_resource_urls', []),
+            false
+        );
+        $customHeadParts = [];
+        $customScriptParts = [];
+        foreach ($customResources as $resource) {
+            $url = htmlspecialchars($resource['url'], ENT_QUOTES, 'UTF-8');
+            if ($resource['type'] === 'css') {
+                $customHeadParts[] = '<link rel="stylesheet" href="' . $url . '">';
+            } else {
+                $customScriptParts[] = '<script src="' . $url . '"></script>';
+            }
+        }
+        if (trim($customCss) !== '') {
+            $customHeadParts[] = '<style id="custom-site-css">' . str_ireplace('</style', '<\/style', $customCss) . '</style>';
+        }
+        if (trim($customJs) !== '') {
+            $customScriptParts[] = '<script id="custom-site-js">' . str_ireplace('</script', '<\/script', $customJs) . '</script>';
+        }
+        $customHead = implode("\n", $customHeadParts);
+        $customScript = implode("\n", $customScriptParts);
 
         $html = file_get_contents(view_path('app.php')) ?: '<!doctype html><html><body>视图缺失</body></html>';
         $publicUrl = public_url();
@@ -104,12 +129,15 @@ final class AppController
             ],
             'settings' => $this->publicSettings($user),
             'theme' => $this->themeConfig(),
+            'version' => (new VersionService())->current(),
         ];
 
         $html = str_replace('__SITE_NAME__', htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'), $html);
         $html = str_replace('__SITE_DESCRIPTION__', htmlspecialchars($siteDescription, ENT_QUOTES, 'UTF-8'), $html);
         $html = str_replace('__SITE_KEYWORDS__', htmlspecialchars($siteKeywords, ENT_QUOTES, 'UTF-8'), $html);
         $html = str_replace('__SITE_FAVICON_TAG__', $faviconTag, $html);
+        $html = str_replace('__CUSTOM_HEAD__', $customHead, $html);
+        $html = str_replace('__CUSTOM_SCRIPT__', $customScript, $html);
         $html = str_replace('__PUBLIC_URL__', htmlspecialchars($publicUrl, ENT_QUOTES, 'UTF-8'), $html);
         $html = str_replace('__SITE_BRAND__', $brandMarkup, $html);
         $html = str_replace('__SEO_FOOTER_BLOCK__', $footerBlock, $html);
@@ -494,6 +522,7 @@ final class AppController
                 $action === 'recharge-orders' => array_map([$this, 'normalizeRechargeRow'], $payments->rechargeOrders()),
                 $action === 'settings' && $request->method() === 'GET' => $this->settings->all(),
                 $action === 'settings/save' => $this->saveSettings($data),
+                $action === 'version/check' && $request->method() === 'GET' => (new VersionService())->check(),
                 $action === 'scheduled-tasks/key' && $request->method() === 'GET' => $this->scheduledTaskKeyInfo(),
                 $action === 'scheduled-tasks/key/reset' && $request->method() === 'POST' => $this->resetScheduledTaskKey($admin),
                 $action === 'upstream' && $request->method() === 'GET' => $pdo->query('SELECT id,name,base_url,upstream_uid,enabled,is_default,options_json,created_at,updated_at FROM upstream_accounts ORDER BY id DESC')->fetchAll(),
@@ -557,7 +586,7 @@ final class AppController
     {
         unset($data['_token']);
         $allowed = array_keys($this->settings->defaults());
-        $jsonKeys = ['sms_config', 'smtp_config', 'geetest_config', 'invite_code_price_rules', 'theme_config'];
+        $jsonKeys = ['sms_config', 'smtp_config', 'geetest_config', 'invite_code_price_rules', 'theme_config', 'custom_resource_urls'];
         $booleanKeys = [
             'frontend_order_enabled', 'api_order_enabled', 'register_need_email', 'register_need_mobile',
             'register_need_image_captcha', 'register_need_geetest', 'register_need_sms_code', 'register_need_email_code',
@@ -586,7 +615,9 @@ final class AppController
                 if (!is_array($value)) {
                     throw new RuntimeException($key . ' 配置格式不正确');
                 }
-                if ($key === 'invite_code_price_rules') {
+                if ($key === 'custom_resource_urls') {
+                    $value = $this->normalizeCustomResources($value);
+                } elseif ($key === 'invite_code_price_rules') {
                     $value = $this->normalizeInviteCodePriceRules($value);
                 } elseif ($key === 'sms_config') {
                     $value = $this->normalizeSmsConfig($smsProvider, $value);
@@ -611,6 +642,12 @@ final class AppController
                 $value = is_scalar($value) ? trim((string) $value) : '';
             }
 
+            if ($key === 'custom_css' && strlen((string) $value) > 200000) {
+                throw new RuntimeException('自定义 CSS 不能超过 200000 字节');
+            }
+            if ($key === 'custom_js' && strlen((string) $value) > 200000) {
+                throw new RuntimeException('自定义 JavaScript 不能超过 200000 字节');
+            }
             if ($key === 'login_need_image_captcha') {
                 $value = '1';
             }
@@ -636,6 +673,51 @@ final class AppController
 
         Logger::write('info', 'settings', '管理员更新系统设置', ['keys' => array_values(array_intersect(array_keys($data), $allowed))]);
         return $this->settings->all();
+    }
+
+    private function normalizeCustomResources(array $resources, bool $strict = true): array
+    {
+        if (count($resources) > 20) {
+            if ($strict) {
+                throw new RuntimeException('外部资源链接最多允许 20 条');
+            }
+            $resources = array_slice($resources, 0, 20);
+        }
+        $normalized = [];
+        foreach ($resources as $resource) {
+            if (!is_array($resource)) {
+                if ($strict) {
+                    throw new RuntimeException('外部资源链接格式不正确');
+                }
+                continue;
+            }
+            $type = strtolower(trim((string) ($resource['type'] ?? '')));
+            $url = trim((string) ($resource['url'] ?? ''));
+            if ($url === '') {
+                continue;
+            }
+            if (!in_array($type, ['css', 'js'], true)) {
+                if ($strict) {
+                    throw new RuntimeException('外部资源类型只能是 CSS 或 JavaScript');
+                }
+                continue;
+            }
+            if (strlen($url) > 2048 || filter_var($url, FILTER_VALIDATE_URL) === false) {
+                if ($strict) {
+                    throw new RuntimeException('外部资源链接格式不正确');
+                }
+                continue;
+            }
+            $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+            if (!in_array($scheme, ['http', 'https'], true)) {
+                if ($strict) {
+                    throw new RuntimeException('外部资源链接仅支持 HTTP 或 HTTPS');
+                }
+                continue;
+            }
+            $normalized[] = ['type' => $type, 'url' => $url];
+        }
+        return $normalized;
     }
 
     private function saveUpstream(array $data): array
