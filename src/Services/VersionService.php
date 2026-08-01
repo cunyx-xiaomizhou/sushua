@@ -31,32 +31,47 @@ final class VersionService
     {
         $current = $this->current();
         $gitAvailable = is_dir(base_path('.git'));
+        $canUpdate = $gitAvailable && $this->canUseGitProcess();
+        
         $result = [
             'current' => $current,
             'remote' => null,
             'has_update' => false,
             'git_available' => $gitAvailable,
-            'can_update' => $gitAvailable,
+            'can_update' => $canUpdate,
             'checked_at' => date('Y-m-d H:i:s'),
-            'message' => $gitAvailable
-                ? '正在读取远程版本清单。'
-                : '项目根目录未检测到 .git，在线版本检测不可用。',
+            'message' => '',
         ];
-        if (!$gitAvailable) return $result;
+        
+        if (!$gitAvailable) {
+            $result['message'] = '项目根目录未检测到 .git，在线版本检测不可用。';
+            return $result;
+        }
+        
+        if (!$this->canUseGitProcess()) {
+            $result['message'] = '服务器未安装 Symfony Process 组件，一键更新功能不可用。';
+            return $result;
+        }
+        
         if (!function_exists('curl_init')) {
             $result['message'] = '服务器未安装 cURL 扩展，在线版本检测不可用。';
             return $result;
         }
+        
+        $result['message'] = '正在读取远程版本清单。';
+        
         try {
             $remote = $this->fetchRemoteVersion();
         } catch (\Throwable $e) {
             $result['message'] = '在线版本检测暂时不可用：' . $e->getMessage();
             return $result;
         }
+        
         if ($remote === null) {
             $result['message'] = '暂时无法读取远程版本清单，请检查 .git/config 中的远程仓库配置。';
             return $result;
         }
+        
         $result['remote'] = $remote;
         $result['has_update'] = $this->compareVersions((string) ($remote['version'] ?? ''), $this->currentVersion()) > 0;
         $result['message'] = $result['has_update']
@@ -70,29 +85,70 @@ final class VersionService
         if (!is_dir(base_path('.git'))) {
             throw new RuntimeException('项目根目录未检测到 .git，无法进行在线更新。');
         }
+        
+        if (!$this->canUseGitProcess()) {
+            throw new RuntimeException('服务器未安装 Symfony Process 组件，无法执行一键更新。请运行 composer require symfony/process 安装依赖。');
+        }
+        
         $remote = $this->fetchRemoteVersion();
         if ($remote === null) {
             throw new RuntimeException('暂时无法读取远程版本清单，请检查 .git/config 中的远程仓库配置。');
         }
+        
         $hasUpdate = $this->compareVersions((string) ($remote['version'] ?? ''), $this->currentVersion()) > 0;
         if (!$hasUpdate) {
             return ['updated' => false, 'message' => '当前已经是最新版本。'];
         }
+        
         $root = base_path();
-        $output = shell_exec('cd ' . escapeshellarg($root) . ' && git fetch origin main 2>&1 && git reset --hard origin/main 2>&1');
-        if ($output === null) {
-            throw new RuntimeException('更新命令执行失败，请检查服务器 Git 配置。');
+        
+        // 使用 Symfony Process 执行 Git 命令
+        try {
+            $processClass = $this->getProcessClass();
+            
+            // 执行 git fetch
+            $fetchProcess = new $processClass(['git', 'fetch', 'origin', 'main'], $root);
+            $fetchProcess->setTimeout(120);
+            $fetchProcess->run();
+            
+            if (!$fetchProcess->isSuccessful()) {
+                throw new RuntimeException('git fetch 失败：' . $fetchProcess->getErrorOutput());
+            }
+            
+            // 执行 git reset
+            $resetProcess = new $processClass(['git', 'reset', '--hard', 'origin/main'], $root);
+            $resetProcess->setTimeout(120);
+            $resetProcess->run();
+            
+            if (!$resetProcess->isSuccessful()) {
+                throw new RuntimeException('git reset 失败：' . $resetProcess->getErrorOutput());
+            }
+            
+        } catch (\Throwable $e) {
+            if ($e instanceof RuntimeException) {
+                throw $e;
+            }
+            throw new RuntimeException('更新命令执行失败：' . $e->getMessage());
         }
-        if (stripos($output, 'fatal') !== false) {
-            throw new RuntimeException('更新失败：' . trim($output));
-        }
+        
         clearstatcache(true, $root . '/version.json');
         $newVersion = $this->current();
+        
         return [
             'updated' => true,
             'message' => '更新成功，当前版本：' . ($newVersion['version'] ?? '未知'),
             'new_version' => $newVersion,
         ];
+    }
+
+    private function canUseGitProcess(): bool
+    {
+        return class_exists('Symfony\Component\Process\Process');
+    }
+
+    private function getProcessClass(): string
+    {
+        return 'Symfony\Component\Process\Process';
     }
 
     private function fetchRemoteVersion(): ?array
@@ -141,7 +197,6 @@ final class VersionService
 
     private function parseRemoteUrl(string $url): ?array
     {
-        // SSH format: git@gitee.com:owner/repo.git or git@github.com:owner/repo.git
         if (preg_match('#^git@([^:]+):([^/]+)/([^/]+?)(?:\.git)?$#i', $url, $parts)) {
             $host = $parts[1];
             $owner = $parts[2];
@@ -150,7 +205,6 @@ final class VersionService
             return ['https://' . $host, $owner, $repo, $platform];
         }
         
-        // HTTP/HTTPS format
         if (preg_match('#^(https?)://([^/]+)(?:/([^/]+)/([^/]+?))(?:\.git)?$#i', $url, $parts)) {
             $host = $parts[2];
             $owner = $parts[3];
@@ -168,7 +222,7 @@ final class VersionService
         if (strpos($host, 'github.com') !== false) return 'github';
         if (strpos($host, 'gitee.com') !== false) return 'gitee';
         if (strpos($host, 'gitlab.com') !== false) return 'gitlab';
-        return 'gitea'; // 默认当作 Gitea
+        return 'gitea';
     }
 
     private function buildApiUrl(string $host, string $owner, string $repo, string $platform): string
@@ -178,20 +232,13 @@ final class VersionService
         
         switch ($platform) {
             case 'github':
-                // GitHub API: https://api.github.com/repos/{owner}/{repo}/contents/{path}
                 return 'https://api.github.com/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/version.json?ref=main';
-                
             case 'gitee':
-                // Gitee API: https://gitee.com/api/v5/repos/{owner}/{repo}/contents/{path}
                 return 'https://gitee.com/api/v5/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/version.json?ref=main';
-                
             case 'gitlab':
-                // GitLab API: https://gitlab.com/api/v4/projects/{owner}%2F{repo}/repository/files/{path}
                 return 'https://gitlab.com/api/v4/projects/' . $ownerEncoded . '%2F' . $repoEncoded . '/repository/files/version.json?ref=main';
-                
             case 'gitea':
             default:
-                // Gitea API: {host}/api/v1/repos/{owner}/{repo}/contents/{path}
                 return $host . '/api/v1/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/version.json?ref=main';
         }
     }
@@ -203,7 +250,6 @@ final class VersionService
         
         $headers = ['Accept: application/json', 'User-Agent: Sushua-Version-Checker'];
         
-        // GitHub API 需要特殊的 User-Agent
         if ($platform === 'github') {
             $headers = ['Accept: application/vnd.github.v3+json', 'User-Agent: Sushua-Version-Checker'];
         }
