@@ -53,7 +53,12 @@ final class VersionService
         }
         
         if (!$this->canUseGitProcess()) {
-            $result['message'] = '服务器未安装 Symfony Process 组件，一键更新功能不可用。';
+            $procStatus = $this->getProcOpenStatus();
+            if (strpos($procStatus, '禁用') !== false) {
+                $result['message'] = $procStatus . '。如需使用一键更新，请修改 php.ini 中的 disable_functions 配置。';
+            } else {
+                $result['message'] = '服务器未安装 Symfony Process 组件，一键更新功能不可用。';
+            }
             return $result;
         }
         
@@ -97,7 +102,12 @@ final class VersionService
         }
         
         if (!$this->canUseGitProcess()) {
-            throw new RuntimeException('服务器未安装 Symfony Process 组件，无法执行一键更新。请运行 composer require symfony/process 安装依赖。');
+            $procStatus = $this->getProcOpenStatus();
+            if (strpos($procStatus, '禁用') !== false) {
+                throw new RuntimeException($procStatus . '。如需使用一键更新，请修改 php.ini 中的 disable_functions 配置。');
+            } else {
+                throw new RuntimeException('服务器未安装 Symfony Process 组件，无法执行一键更新。请运行 composer require symfony/process 安装依赖。');
+            }
         }
         
         $remote = $this->fetchRemoteVersion();
@@ -180,6 +190,17 @@ final class VersionService
 
     private function canUseGitProcess(): bool
     {
+        // 检查 proc_open 是否被禁用
+        if (!function_exists('proc_open')) {
+            return false;
+        }
+        
+        // 检查 disable_functions 配置
+        $disabledFunctions = array_map('trim', explode(',', ini_get('disable_functions')));
+        if (in_array('proc_open', $disabledFunctions, true)) {
+            return false;
+        }
+        
         // 尝试加载 Composer autoloader
         $autoloadFile = base_path('vendor/autoload.php');
         if (file_exists($autoloadFile) && !class_exists('Symfony\Component\Process\Process')) {
@@ -187,6 +208,20 @@ final class VersionService
         }
         
         return class_exists('Symfony\Component\Process\Process');
+    }
+
+    private function getProcOpenStatus(): string
+    {
+        if (!function_exists('proc_open')) {
+            return 'proc_open 函数不可用（可能被禁用）';
+        }
+        
+        $disabledFunctions = array_map('trim', explode(',', ini_get('disable_functions')));
+        if (in_array('proc_open', $disabledFunctions, true)) {
+            return 'proc_open 函数已被禁用，请从 php.ini 的 disable_functions 配置中移除';
+        }
+        
+        return 'proc_open 函数可用';
     }
 
     private function getProcessClass(): string

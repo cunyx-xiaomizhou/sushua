@@ -1,10 +1,8 @@
 {
-  "version": "v1.0.6",
+  "version": "v1.0.7",
   "name": "粥粥速刷系统",
   "features": [
-    "重构版本管理系统，使用 version 目录存储版本信息",
-    "同时显示当前版本特性和新版本特性",
-    "修复 Composer autoloader 加载问题",
-    "一键更新改用自定义确认弹窗"
+    "一键更新增加 proc_open 函数检测",
+    "proc_open 被禁用时显示明确提示"
   ]
 }
