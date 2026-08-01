@@ -16,10 +16,14 @@ final class VersionService
             'name' => '粥粥速刷系统',
             'features' => ['支持在线下单、接口对接、兑换码和后台管理'],
         ];
-        $file = base_path('version.json');
-        if (!is_file($file)) return $fallback;
-        $data = json_decode((string) file_get_contents($file), true);
-        return is_array($data) ? array_replace($fallback, $data) : $fallback;
+        
+        $indexPath = base_path('version/index.json');
+        if (!is_file($indexPath)) return $fallback;
+        
+        $index = json_decode((string) file_get_contents($indexPath), true);
+        if (!is_array($index) || empty($index['latest'])) return $fallback;
+        
+        return $this->getVersionData($index['latest']) ?? $fallback;
     }
 
     public function currentVersion(): string
@@ -73,10 +77,16 @@ final class VersionService
         }
         
         $result['remote'] = $remote;
-        $result['has_update'] = $this->compareVersions((string) ($remote['version'] ?? ''), $this->currentVersion()) > 0;
-        $result['message'] = $result['has_update']
-            ? '检测到新版本：' . ($remote['version'] ?? '未知') . '，点击一键更新即可升级。'
-            : '当前已经是最新版本。';
+        $result['has_update'] = $this->compareVersions((string) ($remote['latest'] ?? ''), $this->currentVersion()) > 0;
+        
+        if ($result['has_update']) {
+            $remoteFeatures = $this->getRemoteVersionData((string) ($remote['latest'] ?? ''));
+            $result['remote_features'] = $remoteFeatures ? ($remoteFeatures['features'] ?? []) : [];
+            $result['message'] = '检测到新版本：' . ($remote['latest'] ?? '未知') . '，点击一键更新即可升级。';
+        } else {
+            $result['message'] = '当前已经是最新版本。';
+        }
+        
         return $result;
     }
 
@@ -95,7 +105,7 @@ final class VersionService
             throw new RuntimeException('暂时无法读取远程版本清单，请检查 .git/config 中的远程仓库配置。');
         }
         
-        $hasUpdate = $this->compareVersions((string) ($remote['version'] ?? ''), $this->currentVersion()) > 0;
+        $hasUpdate = $this->compareVersions((string) ($remote['latest'] ?? ''), $this->currentVersion()) > 0;
         if (!$hasUpdate) {
             return ['updated' => false, 'message' => '当前已经是最新版本。'];
         }
@@ -130,7 +140,7 @@ final class VersionService
             throw new RuntimeException('更新命令执行失败：' . $e->getMessage());
         }
         
-        clearstatcache(true, $root . '/version.json');
+        clearstatcache(true, $root . '/version/index.json');
         $newVersion = $this->current();
         
         return [
@@ -138,6 +148,34 @@ final class VersionService
             'message' => '更新成功，当前版本：' . ($newVersion['version'] ?? '未知'),
             'new_version' => $newVersion,
         ];
+    }
+
+    private function getVersionData(string $version): ?array
+    {
+        $file = base_path('version/' . $version . '.json');
+        if (!is_file($file)) return null;
+        $data = json_decode((string) file_get_contents($file), true);
+        return is_array($data) ? $data : null;
+    }
+
+    private function getRemoteVersionData(string $version): ?array
+    {
+        $remoteInfo = $this->originRemote();
+        if ($remoteInfo === null) return null;
+        
+        [$host, $owner, $repo, $platform] = $remoteInfo;
+        $apiUrl = $this->buildApiUrl($host, $owner, $repo, $platform, $version);
+        
+        try {
+            $payload = $this->requestJson($apiUrl, $platform);
+            if (empty($payload)) return null;
+            $content = base64_decode((string) ($payload['content'] ?? ''), true);
+            if ($content === false) return null;
+            $data = json_decode($content, true);
+            return is_array($data) ? $data : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     private function canUseGitProcess(): bool
@@ -172,11 +210,11 @@ final class VersionService
         }
         $content = base64_decode((string) ($payload['content'] ?? ''), true);
         if ($content === false) {
-            throw new RuntimeException('无法解码远程 version.json 内容。');
+            throw new RuntimeException('无法解码远程 version/index.json 内容。');
         }
         $version = json_decode($content, true);
         if (!is_array($version)) {
-            throw new RuntimeException('远程 version.json 格式无效。');
+            throw new RuntimeException('远程 version/index.json 格式无效。');
         }
         return $version;
     }
@@ -230,21 +268,24 @@ final class VersionService
         return 'gitea';
     }
 
-    private function buildApiUrl(string $host, string $owner, string $repo, string $platform): string
+    private function buildApiUrl(string $host, string $owner, string $repo, string $platform, string $version = ''): string
     {
         $ownerEncoded = rawurlencode($owner);
         $repoEncoded = rawurlencode($repo);
         
+        $path = $version ? 'version/' . rawurlencode($version) . '.json' : 'version/index.json';
+        
         switch ($platform) {
             case 'github':
-                return 'https://api.github.com/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/version.json?ref=main';
+                return 'https://api.github.com/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/' . $path . '?ref=main';
             case 'gitee':
-                return 'https://gitee.com/api/v5/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/version.json?ref=main';
+                return 'https://gitee.com/api/v5/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/' . $path . '?ref=main';
             case 'gitlab':
-                return 'https://gitlab.com/api/v4/projects/' . $ownerEncoded . '%2F' . $repoEncoded . '/repository/files/version.json?ref=main';
+                $encodedPath = str_replace('/', '%2F', $path);
+                return 'https://gitlab.com/api/v4/projects/' . $ownerEncoded . '%2F' . $repoEncoded . '/repository/files/' . $encodedPath . '?ref=main';
             case 'gitea':
             default:
-                return $host . '/api/v1/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/version.json?ref=main';
+                return $host . '/api/v1/repos/' . $ownerEncoded . '/' . $repoEncoded . '/contents/' . $path . '?ref=main';
         }
     }
 
@@ -278,7 +319,7 @@ final class VersionService
             throw new RuntimeException('cURL 请求失败：' . $error);
         }
         if ($code === 404) {
-            throw new RuntimeException('远程仓库中未找到 version.json 文件，请确保远程仓库存在该文件。');
+            throw new RuntimeException('远程仓库中未找到版本文件。');
         }
         if ($code < 200 || $code >= 300) {
             throw new RuntimeException('远程服务器返回 HTTP ' . $code);

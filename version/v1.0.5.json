@@ -1,0 +1,8 @@
+{
+  "version": "v1.0.5",
+  "name": "粥粥速刷系统",
+  "features": [
+    "修复 Composer autoloader 加载问题",
+    "一键更新改用自定义确认弹窗"
+  ]
+}

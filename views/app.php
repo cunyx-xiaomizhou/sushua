@@ -1785,7 +1785,14 @@ __CUSTOM_HEAD__
                 <div v-if="adminState.version.has_update && adminState.version.can_update" class="section-gap">
                   <button class="btn primary" @click="updateVersion" :disabled="adminState.version.updating">{{ adminState.version.updating ? '正在更新...' : '一键更新' }}</button>
                 </div>
-                <div class="section-gap"><h3>{{ adminState.version.has_update ? '新版本特性' : '当前版本特性' }}</h3><ul class="feature-list"><li v-for="(feature,index) in versionFeatures" :key="index">{{ feature }}</li></ul></div>
+                <div class="section-gap">
+  <h3>当前版本特性</h3>
+  <ul class="feature-list"><li v-for="(feature,index) in currentFeatures" :key="index">{{ feature }}</li></ul>
+  <template v-if="remoteFeatures.length">
+    <h3 style="margin-top:16px">新版本特性</h3>
+    <ul class="feature-list"><li v-for="(feature,index) in remoteFeatures" :key="index">{{ feature }}</li></ul>
+  </template>
+</div>
                 <div class="auth-footnote section-gap">在线版本更新仅在项目根目录存在 <span class="code-inline">.git</span> 时可用。更新前请先备份数据库与配置。系统将自动执行 <span class="code-inline">git pull origin main</span> 拉取最新代码。</div>
               </div>
 
@@ -2269,9 +2276,13 @@ const app = Vue.createApp({
     canShowSupportGroup: function () {
       return boolish(this.settings.can_show_support_group) && String(this.settings.support_group_qq || '').trim() !== '';
     },
-    versionFeatures: function () {
-      const source = this.adminState.version.has_update && this.adminState.version.remote ? this.adminState.version.remote : (this.adminState.version.current || this.currentVersion || {});
+    currentFeatures: function () {
+      const source = this.adminState.version.current || this.currentVersion || {};
       return Array.isArray(source.features) && source.features.length ? source.features : ['暂无版本特性说明'];
+    },
+    remoteFeatures: function () {
+      if (!this.adminState.version.has_update) return [];
+      return Array.isArray(this.adminState.version.remote_features) && this.adminState.version.remote_features.length ? this.adminState.version.remote_features : [];
     },
     userLoginNeedCaptcha: function () {
       return true;

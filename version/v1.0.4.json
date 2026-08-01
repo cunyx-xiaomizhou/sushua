@@ -1,0 +1,8 @@
+{
+  "version": "v1.0.4",
+  "name": "粥粥速刷系统",
+  "features": [
+    "删除 server/ai-skills 目录",
+    "版本更新至 1.0.4"
+  ]
+}
