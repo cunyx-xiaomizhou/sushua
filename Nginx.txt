@@ -1,0 +1,32 @@
+# Sushua Nginx 伪静态规则
+#
+# 使用方法：
+# 1. 将站点运行目录（root）设置为本项目根目录。
+# 2. 将以下内容添加到当前站点的 server { ... } 配置或伪静态配置中。
+# 3. 站点仍需由服务器面板或主配置正确启用 PHP-FPM。
+# 4. 保存后先执行 nginx -t，确认无误再平滑重载 Nginx。
+#
+# 安装前：根路径会在 index.php 不存在时进入 default.php 安装入口。
+# 安装后：安装程序生成 index.php，普通路径由 index.php 处理，
+#         例如 /user/home、/user/settings、/admin/system/home。
+
+index index.php default.php;
+
+location / {
+    try_files $uri $uri/ /index.php?$query_string;
+}
+
+# 禁止通过浏览器读取配置、安装锁和运行日志。
+location ^~ /storage/ {
+    deny all;
+}
+
+# 安装程序只能由 default.php 在服务端引导，禁止直接读取 install 目录文件。
+location ^~ /install/ {
+    deny all;
+}
+
+# 禁止访问隐藏文件，但保留 Let's Encrypt 验证目录。
+location ~ /\.(?!well-known(?:/|$)) {
+    deny all;
+}
