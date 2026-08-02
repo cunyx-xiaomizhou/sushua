@@ -1,0 +1,223 @@
+# 系统名称
+
+**Sushua 上游加价售卖系统**
+
+# 系统介绍
+
+Sushua 是一套面向上游商品代理、在线下单和订单管理场景的 Web 系统。系统支持上游货源配置与商品同步、用户与用户组管理、分组加价、在线下单、订单状态同步、充值与资金流水、API 对接、邀请码、商品兑换码、日志以及站点基础设置等功能。
+
+系统前台、用户后台和管理后台使用同一套应用，通过普通路径访问，例如 `/login`、`/user/home`、`/admin/home`。安装完成后，安装程序会在项目根目录生成正式的 `index.php` 入口文件。
+
+# 技术栈
+
+- 后端：PHP 8.3+，原生 PHP 分层结构
+- 数据库：MySQL 5.6+
+- 数据访问：PDO MySQL
+- 前端：Vue 3
+- Web 服务器：Nginx 或 Apache
+- 必需 PHP 扩展：`curl`、`mbstring`、`openssl`、`pdo_mysql`
+- 推荐运行环境：Linux、PHP-FPM、Nginx
+
+# 安装教程
+
+## 1. 准备运行环境
+
+在 Linux 服务器安装并启用：
+
+- PHP 8.3 或更高版本
+- MySQL 5.6 或更高版本
+- Nginx 或 Apache
+- PHP 扩展：`curl`、`mbstring`、`openssl`、`pdo_mysql`
+
+建议将 PHP 时区设置为：
+
+```ini
+date.timezone = Asia/Shanghai
+```
+
+## 2. 创建数据库
+
+在 MySQL 中手动创建一个空数据库和一个专用数据库账号，并授予该账号访问此数据库所需的权限。数据库名称、账号、密码、主机和端口均以安装页面填写的内容为准，不要求使用固定数据库名称。
+
+建议使用 `utf8mb4` 字符集。
+
+## 3. 上传并配置站点
+
+1. 将项目文件上传到网站目录。
+2. 将网站运行目录指向项目根目录。
+3. 配置 PHP-FPM。
+4. 确保 Web 服务运行账号对 `storage/` 和 `runtime/` 目录拥有写入权限。
+5. Nginx 用户可参考项目根目录的 `Nginx.txt` 配置伪静态；Apache 用户需要启用 `mod_rewrite` 并允许读取根目录 `.htaccess`。
+
+伪静态必须将不存在的文件和目录交给根目录入口处理，否则 `/login`、`/user/home`、`/admin/home` 等普通路径在刷新或直接访问时可能返回 404。
+
+## 4. 完成网页安装
+
+首次访问站点根目录或 `/default.php`，按照安装向导填写数据库、站点和站长账号信息并完成安装。
+
+安装成功后：
+
+- 根目录会生成正式的 `index.php`。
+- `default.php` 不再负责业务页面分发。
+- 再次访问安装入口只会提示已安装；如确需重新安装，应先按页面提示处理安装锁及相关文件，并提前备份数据。
+
+## 5. 安装后检查
+
+- 确认首页、登录页、用户后台和管理后台均可正常访问。
+- 在管理后台配置上游货源，并测试连接、余额和商品同步。
+- 检查站点域名、后台路径、支付、短信、邮件和登录安全设置。
+- 配置下文所述的定时任务 API，使商品和进行中订单能够按计划同步。
+
+# 使用手册
+
+## 管理后台
+
+站长或管理员登录后，可在管理后台完成以下操作：
+
+- 配置上游货源并同步商品。
+- 管理商品、订单、用户、用户组、余额和资金流水。
+- 配置站点基础信息、登录注册策略、支付、短信、邮件、主题和备案信息。
+- 查看系统日志，并按日志等级或频道筛选。
+- 管理邀请码、充值卡密和商品兑换码。
+
+后台路径以安装或系统设置中配置的路径为准；如果配置为多级路径，应完整保留各级路径。
+
+## 用户后台
+
+用户登录后可以查看余额、订单和资金记录，按权限使用 API Key、生成邀请码或商品兑换码，并维护个人资料。具体可用功能由用户身份、用户组和后台单独配置共同决定。
+
+## 在线下单与查单
+
+1. 在在线下单页面选择商品并填写商品要求的参数。
+2. 系统会按照当前用户组计算最终价格。
+3. 提交成功后保存订单号，可通过查单页面查询订单状态和备注信息。
+4. 商品兑换码可在 `/exchange` 页面兑换；兑换成功后，系统会将最近订单号保存到浏览器，方便后续查单。
+
+## API 对接
+
+具备对接权限的用户可在用户后台生成或重置 API Key，并按照系统提供的接口信息发起请求。API Key 属于敏感凭据，不应写入公开代码、前端页面或公开日志。
+
+## 定时任务 API 使用手册
+
+系统提供两个无需 Shell 的定时任务接口，支持 `GET` 和 `POST` 请求：
+
+| 接口 | 用途 |
+| --- | --- |
+| `/api/cron/products/sync` | 从当前上游同步商品数据 |
+| `/api/cron/orders/sync` | 同步进行中订单的最新状态 |
+
+### 获取和重置系统密钥
+
+进入：**管理后台 → 系统设置 → 定时任务 API**。
+
+管理员可在此查看、复制或重置系统密钥。系统密钥重置后，旧密钥立即失效，所有定时任务平台都需要更新为新密钥。
+
+### 推荐调用方式
+
+推荐通过请求头传递密钥，避免密钥出现在 URL 和访问日志中。
+
+使用 `Authorization: Bearer`：
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_SYSTEM_KEY" \
+  https://example.com/api/cron/products/sync
+```
+
+使用 `X-System-Key`：
+
+```bash
+curl -X POST \
+  -H "X-System-Key: YOUR_SYSTEM_KEY" \
+  https://example.com/api/cron/orders/sync
+```
+
+请将 `https://example.com` 替换为本站实际访问地址，将 `YOUR_SYSTEM_KEY` 替换为管理后台显示的系统密钥。
+
+### 仅支持 URL 的定时任务平台
+
+如果定时任务平台无法设置请求头，可以使用查询参数：
+
+```text
+https://example.com/api/cron/products/sync?system_key=YOUR_SYSTEM_KEY
+https://example.com/api/cron/orders/sync?system_key=YOUR_SYSTEM_KEY
+```
+
+系统同时兼容参数名 `key`，但建议统一使用 `system_key`。
+
+### 执行频率建议
+
+- 商品同步：可根据上游商品变更频率，每 10 至 60 分钟执行一次。
+- 订单同步：可根据订单量和上游限制，每 1 至 5 分钟执行一次。
+- 不要以过高频率重复请求，以免触发上游接口限流或增加服务器负载。
+
+### 返回与排查
+
+- 密钥正确且任务执行成功时，接口返回成功状态、任务类型、执行结果和执行时间。
+- 密钥缺失或错误时返回 HTTP 401。
+- 请求方法不是 `GET` 或 `POST` 时返回 HTTP 405。
+- 执行异常时返回 HTTP 500，并记录到系统日志的 `scheduled_task` 频道。
+
+定时任务调用失败时，应依次检查站点地址、伪静态、HTTPS、系统密钥、服务器网络、上游配置和系统日志。
+
+# Composer 依赖安装（可选）
+
+系统部分功能依赖第三方 Composer 包，未安装时不影响核心功能使用。
+
+## 安装 Composer
+
+如果服务器尚未安装 Composer，请执行以下命令：
+
+```bash
+# 下载 Composer 安装脚本
+curl -sS https://getcomposer.org/installer | php
+
+# 移动到全局目录
+mv composer.phar /usr/local/bin/composer
+
+# 验证安装
+composer --version
+```
+
+## 安装项目依赖
+
+进入项目根目录执行：
+
+```bash
+cd /path/to/your/project
+composer install --no-dev --optimize-autoloader
+```
+
+## 可选依赖说明
+
+| 依赖包 | 用途 | 安装命令 |
+|--------|------|----------|
+| `symfony/process` | 后台一键更新功能 | `composer require symfony/process` |
+
+### 一键更新功能
+
+系统后台的「版本与在线更新」功能需要 `symfony/process` 组件支持。
+
+**安装方法：**
+
+```bash
+cd /path/to/your/project
+composer require symfony/process
+```
+
+**未安装时的表现：**
+
+- 版本检测功能正常可用
+- 一键更新按钮不显示
+- 页面提示「一键更新功能不可用，请安装 Symfony Process 组件」
+- 不影响系统其他功能正常使用
+
+**手动更新替代方案：**
+
+如果不想安装 Composer 依赖，可以通过 SSH 手动执行更新：
+
+```bash
+cd /path/to/your/project
+git fetch origin main
+git reset --hard origin/main
+```
