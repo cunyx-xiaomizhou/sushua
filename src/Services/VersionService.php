@@ -281,44 +281,77 @@ final class VersionService
 
     private function originRemote(): ?array
     {
-        if (!is_dir(base_path('.git'))) return null;
-        $config = (string) @file_get_contents(base_path('.git/config'));
+        $gitDir = base_path('.git');
+        if (!is_dir($gitDir)) return null;
+
+        $config = (string) @file_get_contents($gitDir . DIRECTORY_SEPARATOR . 'config');
         if ($config === '') return null;
-        
-        foreach (['origin', 'upstream'] as $remoteName) {
-            $pattern = '/\[remote "' . preg_quote($remoteName, '/') . '"\] [^\[]*?\n\s*url\s*=\s*(\S+)/s';
-            if (preg_match($pattern, $config, $match)) {
-                $url = trim($match[1]);
-                $parsed = $this->parseRemoteUrl($url);
-                if ($parsed !== null) {
-                    return $parsed;
-                }
+
+        $remoteUrls = [];
+        $currentRemote = null;
+
+        foreach (preg_split('/\R/', $config) ?: [] as $line) {
+            $line = trim($line);
+
+            if (preg_match('/^\[\s*remote\s+"([^"]+)"\s*\]$/i', $line, $match)) {
+                $currentRemote = strtolower($match[1]);
+                continue;
+            }
+
+            if (preg_match('/^\[.*\]$/', $line)) {
+                $currentRemote = null;
+                continue;
+            }
+
+            if ($currentRemote === null || isset($remoteUrls[$currentRemote])) continue;
+
+            if (preg_match('/^url\s*=\s*(\S+)\s*$/i', $line, $match)) {
+                $remoteUrls[$currentRemote] = $match[1];
             }
         }
+
+        foreach (['origin', 'upstream'] as $remoteName) {
+            if (!isset($remoteUrls[$remoteName])) continue;
+
+            $parsed = $this->parseRemoteUrl($remoteUrls[$remoteName]);
+            if ($parsed !== null) {
+                return $parsed;
+            }
+        }
+
         return null;
     }
 
     private function parseRemoteUrl(string $url): ?array
     {
-        if (preg_match('#^git@([^:]+):([^/]+)/([^/]+?)(?:\.git)?$#i', $url, $parts)) {
+        $url = trim($url);
+
+        if (preg_match('#^git@([^:]+):([^/]+)/([^/]+?)(?:\.git)?/?$#i', $url, $parts)) {
             $host = $parts[1];
             $owner = $parts[2];
             $repo = $parts[3];
             $platform = $this->detectPlatform($host);
             return ['https://' . $host, $owner, $repo, $platform];
         }
-        
-        if (preg_match('#^(https?)://([^/]+)(?:/([^/]+)/([^/]+?))(?:\.git)?$#i', $url, $parts)) {
+
+        if (preg_match('#^ssh://(?:[^@/]+@)?([^/:]+)(?::\d+)?/([^/]+)/([^/]+?)(?:\.git)?/?$#i', $url, $parts)) {
+            $host = $parts[1];
+            $owner = $parts[2];
+            $repo = $parts[3];
+            $platform = $this->detectPlatform($host);
+            return ['https://' . $host, $owner, $repo, $platform];
+        }
+
+        if (preg_match('#^(https?)://(?:[^@/]+@)?([^/]+)/([^/]+)/([^/]+?)(?:\.git)?/?$#i', $url, $parts)) {
             $host = $parts[2];
             $owner = $parts[3];
             $repo = $parts[4];
             $platform = $this->detectPlatform($host);
             return [$parts[1] . '://' . $host, $owner, $repo, $platform];
         }
-        
+
         return null;
     }
-
     private function detectPlatform(string $host): string
     {
         $host = strtolower($host);
